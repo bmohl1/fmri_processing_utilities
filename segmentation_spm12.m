@@ -14,22 +14,13 @@ function [subjs] = segmentation_spm12(subjs, subj_redo_segment, child_temp)
   template_home = [spm_home, filesep, 'tpm'];
 
   %% Grab the files
-  switch exist ('subjs')
-  case 1
-    [cwd,pth_subjdirs] = file_selector(subjs);
-    for tt=1:length(pth_subjdirs)
-      tmp = textscan(pth_subjdirs{tt},'%s','Delimiter','/');
-      subjList{tt} = tmp{1,1}{end-1};
-      pth_subjdirs{tt} = strcat(filesep,fullfile(tmp{1,1}{1:end-1})); %otherwise loops through the subject multiple times
-    end
 
-  otherwise
-    [cwd,pth_subjdirs] = file_selector;
-    for tt=1:length(pth_subjdirs)
-      tmp = textscan(pth_subjdirs{tt},'%s','Delimiter','/');
-      subjList{tt} = tmp{1,1}{end};
-    end
-  end
+switch exist ('subjs','var')
+    case 1
+        [projDir,pth_subjdirs, subjList] = file_selector(subjs);
+    otherwise
+        [projDir,pth_subjdirs, subjList] = file_selector;
+end
 
   switch exist ('child_temp','var')
   case 1
@@ -46,7 +37,7 @@ function [subjs] = segmentation_spm12(subjs, subj_redo_segment, child_temp)
       end
     end
   end
-  cd (cwd);
+  cd (projDir);
   %Set defaults
   if ~exist('subj_redo_segment','var')
     subj_redo_segment = 0;
@@ -93,8 +84,8 @@ function [subjs] = segmentation_spm12(subjs, subj_redo_segment, child_temp)
       [subj_t1_dir, subj_t1_file, t1_ext] = locate_scan_file('t1',subj_prefix);
     end
     if isempty(subj_t1_file)
-      try
-        [subj_t1_dir, subj_t1_file, t1_ext] = locate_scan_file('anat', subj);
+       try
+                [subj_t1_dir, subj_t1_file, t1_ext] = locate_scan_file('anat', subj);
       catch
         disp ('Naming scheme for the T1 directory does not follow the convention of "t1" or "anat". Please rename.')
       end
@@ -113,7 +104,7 @@ function [subjs] = segmentation_spm12(subjs, subj_redo_segment, child_temp)
         if isempty(arrayfun(@(y) isempty(y.name), c1_img)) || eq(subj_redo_segment,1);
           %%
           clear matlabbatch
-          spm_jobman('initcfg');
+
           t1_raw_input = []; %Don't know why, but batch req's cell with the file name (t1_name) as one of potentially many cells. Follow this template to get the array/cell structure correct.bmm
           t1_name = [strcat(subj_t1_dir, filesep, subj_t1_file, ',1')];
           t1_raw_input{1,1} = t1_name;
@@ -173,6 +164,7 @@ function [subjs] = segmentation_spm12(subjs, subj_redo_segment, child_temp)
           % run batch
           spm_jobman('run',matlabbatch)
           disp('Completed Segmentation')
+          subj_redo_segment = 0;
         else
           disp('Segmentation already done. Moving along.')
         end

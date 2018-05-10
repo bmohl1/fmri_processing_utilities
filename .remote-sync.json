@@ -1,0 +1,15 @@
+{
+  "uploadOnSave": true,
+  "useAtomicWrites": false,
+  "deleteLocal": false,
+  "hostname": "10.140.255.15",
+  "target": "/home/brianne/tools/fmri_processing_utilities",
+  "ignore": [
+    ".remote-sync.json",
+    ".git/**"
+  ],
+  "username": "brianne",
+  "keyfile": "/Users/bmohl/.ssh/id_rsa",
+  "watch": [],
+  "transport": "scp"
+}

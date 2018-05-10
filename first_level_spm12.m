@@ -71,7 +71,11 @@ for iTask = 1:nTasks;
         subj_prefix = (subj(1:end-1)); %Also for multiple timepoints, where T1 is not collected at all timepoints
         
         ix = strfind(task,'_run'); %Specific to dir names with 'run' in them.
-        taskName = task(1:ix-1);
+        if isempty(ix)
+            taskName=task
+        else
+            taskName = task(1:ix-1);
+        end
         
         if eq(runArt,1) %from the checkbox setup
             results_dir = [subj_pth,filesep,taskName,'_resultsArt'];
@@ -82,7 +86,7 @@ for iTask = 1:nTasks;
         if eq(unwarp,1)
             results_dir = [results_dir, '_unwarp'];
         end
-               
+        
         
         if ~isempty (dirName) %capability to quickly run experiments on other processing options w/o overwriting the original results
             if ~contains(dirName,'Enter'); %'Enter special suffix here' doesn't need to be added... so skip changing the directory name, if the default was unchanged
@@ -91,7 +95,7 @@ for iTask = 1:nTasks;
         end
         
         check = rdir(results_dir);
-        if isempty(check());
+        if isempty(check);
             mkdir (results_dir);
         end
         
@@ -129,7 +133,7 @@ for iTask = 1:nTasks;
                     imgFiles = rdir(locateImg);
                     findShort = cellfun(@(x) numel(x), {imgFiles.name}); % in case there are multiple processing pipelines completed on the same brain
                     imgNames = imgFiles(findShort == min(findShort));
-                        
+                    
                     if length(imgNames) > 1 %The ANALYZE and 3D NII condition
                         nVols = length(imgNames);
                         tmp_sw_files = cell(1,nVols);
@@ -169,10 +173,11 @@ for iTask = 1:nTasks;
                 end
                 
                 %% Defining the contrasts
-                contrast_design_file = rdir([proj_dir,filesep,taskName,'*_contrasts*']);
-                if arrayfun(@(x) isempty(x.name),(contrast_design_file)) == 1
-                    fprintf('No contrasts defined for %s in %s\nPlease correct before continuing\n',taskName, proj_dir);
-                    break
+                %contrast_design_file = rdir([proj_dir,filesep,'*', taskName,'*_contrasts*']);
+                contrast_design_file = rdir([proj_dir,filesep, taskName,'*_contrasts*']);
+                if length(contrast_design_file) == 0
+                    fprintf('No contrasts defined for %s in %s\nPlease correct before continuing (Line 176)\n',taskName, proj_dir);
+                    return
                 end
                 [~,~, raw] = xlsread(contrast_design_file.name); % Must contain the headers listed below, with data stacked vertically underneath.
                 tIx = find(strcmp('titles',raw(1,:))); %names for the top of the glass brains
@@ -194,7 +199,7 @@ for iTask = 1:nTasks;
                 matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t = 16;
                 matlabbatch{1}.spm.stats.fmri_spec.timing.fmri_t0 = 8;
                 matlabbatch{1}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
-                matlabbatch{1}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+                matlabbatch{1}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0]; %Change here for different basis functions
                 matlabbatch{1}.spm.stats.fmri_spec.volt = 1;
                 matlabbatch{1}.spm.stats.fmri_spec.global = 'None';
                 matlabbatch{1}.spm.stats.fmri_spec.mthresh = 0.8;
@@ -207,8 +212,8 @@ for iTask = 1:nTasks;
                 %% Find smoothed files, condition regressors, and contrast files
                 % Customized for number of runs
                 
-                study_design_file = rdir([proj_dir,filesep,taskName,'*_param*']);
-                if arrayfun(@(x) isempty(x.name),(study_design_file)) == 1
+                study_design_file = rdir([proj_dir,filesep,'*',taskName,'*_param*']);
+                if length(study_design_file.name) == 0
                     fprintf('Design parameters for %s in %s\nPlease correct before continuing\n',taskName, proj_dir);
                     return
                 end
@@ -246,7 +251,14 @@ for iTask = 1:nTasks;
                     q = taskArray{r};
                     taskNum = q(end);
                     
-                    raw_dir = [subj_pth,filesep,taskName,'_run', taskNum];
+                    %Raw directory definition
+                    ix = strfind(task,'_run'); %Specific to dir names with 'run' in them.
+                    if isempty(ix)
+                        raw_dir = [subj_pth,filesep,taskName];
+                    else
+                        raw_dir = [subj_pth,filesep,taskName,'_run', taskNum];
+                    end
+                    
                     if eq(runArt,1)
                         rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_and_movement*'));
                         if isempty(arrayfun(@(x) ~isempty(x),rp_file))
@@ -256,13 +268,22 @@ for iTask = 1:nTasks;
                         end
                         
                         if exist('regs','var') %for unwarped analyses
-                             rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_w*'));
-                             if isempty(rp_file)
-                                 rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_sw*'));
-                             end
+                            rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_w*'));
+                            if isempty(rp_file)
+                                rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_sw*'));
+                            end
                         end
                         
                         load(rp_file.name);
+                        if exist('R','var')
+                            %Tallyies the frames identified for despiking
+                            %so that we can insure all groups are equally
+                            %estimated.
+                            tps =size(R,2)-7
+                            art_report = strcat(proj_dir, filesep, 'art_frames_identified_', task, '.txt');
+                            cmd = sprintf('echo %s %0d\t "Signal SD: 5.0; FD motion: 1.0" >> %s', subj, tps, art_report);
+                            system(cmd);
+                        end
                         
                         if (r==1)
                             nMtnRegs = size(R,2); %R is the name of the matrix from the rp_file (runArt sets the name)
@@ -280,8 +301,6 @@ for iTask = 1:nTasks;
                             nMtnRegs = 0;
                         end
                     end
-                    
-                    
                     %% Record the parameters in the batch
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).scans = scan_files';
                     for c = 1:(length(cndtn_array(1,1).name))
@@ -303,12 +322,14 @@ for iTask = 1:nTasks;
                     for j = 1:nCons
                         if strcmpi(contrast_array(1,1).kind{j+1},'tcon')
                             matlabbatch{3}.spm.stats.con.consess{j}.tcon.name = contrast_array(1,1).title{j+1};
-                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.weights = [str2num(contrast_array(1,1).con{j+1}), zeros(1,nMtnRegs),str2num(contrast_array(1,1).con{j+1})]; %currently only accommodates 2 runs...
-                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.sessrep = 'none';
+                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.weights = [str2num(contrast_array(1,1).con{j+1})]; %currently only accommodates 1 run...
+                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.sessrep = 'repl';
                         elseif strcmpi(contrast_array(1,1).kind{j+1},'fcon')
                             matlabbatch{3}.spm.stats.con.consess{j}.fcon.name = contrast_array(1,1).title{j+1};
-                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.weights = [str2num(contrast_array(1,1).con{j+1}), zeros(1,nMtnRegs),str2num(contrast_array(1,1).con{j+1})];
-                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.sessrep = 'none';
+                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.weights = [str2num(contrast_array(1,1).con{j+1})];
+                            % Only if you want to explicitly spell out the contrasts (not use the "repeat for each session" option) should you use this next line
+                            %               matlabbatch{3}.spm.stats.con.consess{j}.fcon.weights = [str2num(contrast_array(1,1).con{j+1}), zeros(1,nMtnRegs),str2num(contrast_array(1,1).con{j+1})];
+                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.sessrep = 'repl';
                         else
                             fprintf('Missing contrast type (tcon or fcon) for %s\n', contrast_array(1,1).title{j+1});
                         end
@@ -316,18 +337,18 @@ for iTask = 1:nTasks;
                     end
                     matlabbatch{3}.spm.stats.con.delete = 0; %Add the SPM batch setup
                     
-                    matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
-                    for k = 1:nCons
-                        matlabbatch{4}.spm.stats.results.conspec(k).titlestr = contrast_array(1,1).title{k+1};
-                        matlabbatch{4}.spm.stats.results.conspec(k).contrasts = k;
-                        matlabbatch{4}.spm.stats.results.conspec(k).threshdesc = 'none';
-                        matlabbatch{4}.spm.stats.results.conspec(k).thresh = 0.001;
-                        matlabbatch{4}.spm.stats.results.conspec(k).extent = 25;
-                        matlabbatch{4}.spm.stats.results.conspec(k).mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
-                    end
-                    matlabbatch{4}.spm.stats.results.units = 1;
-                    matlabbatch{4}.spm.stats.results.print = 'ps';
-                    matlabbatch{4}.spm.stats.results.write.none = 1;
+                    %                     matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+                    %                     for k = 1:nCons
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).titlestr = contrast_array(1,1).title{k+1};
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).contrasts = k;
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).threshdesc = 'none';
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).thresh = 0.001;
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).extent = 25;
+                    %                         matlabbatch{4}.spm.stats.results.conspec(k).mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
+                    %                     end
+                    %                     matlabbatch{4}.spm.stats.results.units = 1;
+                    %                     matlabbatch{4}.spm.stats.results.print = 'ps';
+                    %                     matlabbatch{4}.spm.stats.results.write.none = 1;
                 else
                     disp('Please run contrast manager and results report manually')
                 end

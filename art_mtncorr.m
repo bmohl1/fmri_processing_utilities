@@ -11,7 +11,8 @@ function art_mtncorr(subjs, raw_dir, swFiles)
 %are not the same length as the processed files
 %#######################################################################
 
-if isempty(which('art'))
+if isempty(which('art_bmm'))
+    rmpath(which('art'));
     addpath('/home/brianne/tools/toolboxes/art');
 end
 
@@ -58,9 +59,9 @@ for iSubj = 1:length(pth_subjdirs)
     
     %for iTask = 1:length(taskArray);
         task    = pth_taskdirs.task; %stored from file_selector_task
-        rawDirName = pth_taskdirs.rawDir;
+        rawDirName = pth_taskdirs.rawDir; % if "raw" exists in file structure
         
-        if isempty(glob(char(strcat(pth_subjdirs{iSubj}, filesep,'*art_graphs*')))); % has the ART correction already been applied?
+        if isempty(glob(char(strcat(pth_subjdirs{iSubj}, filesep,task,filesep,'*_art_graphs*')))); % has the ART correction already been applied?
             fprintf('Processing %s task %d \n', subj);
             tmp = strfind(pth,subj); % Scan all the parts of the path to find which pieces should be put together for the raw directory path
             ix = find(cellfun(@(x) ~isempty(x),tmp)); %Trying to locate the path correctly
@@ -100,7 +101,7 @@ for iSubj = 1:length(pth_subjdirs)
                 % global mean type (1: Standard 2: User-defined mask)
                 fprintf(fid, 'global_threshold: 5.0\n');
                 % threhsolds for outlier detection
-                fprintf(fid, 'motion_threshold: 1.5\n' );
+                fprintf(fid, 'motion_threshold: 1.0\n' );
                 fprintf(fid, 'motion_file_type: 0\n' );
                 % motion file type (0: SPM .txt file 1: FSL .par file 2:Siemens .txt file)
                 fprintf(fid, 'motion_fname_from_image_fname: 0\n' );
@@ -110,7 +111,7 @@ for iSubj = 1:length(pth_subjdirs)
                 %set spm_file_out = `ls ${long_name}/results_unwarp/SPM.mat`
                 % location of SPM.mat file (comment this line if you do not wish to estimate number of outliers per condition)
                 %fprintf(fid, 'spm_file: ${spm_file_out} ' >> ${basename}_art.cfg
-                fprintf(fid, 'subj_dir: %s\n', pth{:});
+                fprintf(fid, 'subj_dir: %s\n', strcat(filesep,fullfile(pth{:})));
                 fprintf(fid, 'output_dir: %s\n', raw_dir  );
                 fprintf(fid, 'image_dir: %s\n', raw_dir  );          % functional and movement data folders (comment these lines if functional/movement filenames below contain full path information)
                 fprintf(fid, 'motion_dir: %s\n', raw_dir  );
@@ -134,7 +135,7 @@ for iSubj = 1:length(pth_subjdirs)
                     fprintf(fid, 'end\n');
                 end
                 fclose('all');
-                art_bmm(char(fileName)); %Almost always, errors in loading files here are due to how many question marks there are. Cannot be relative path.
+                art_bmm(char(fileName)); %Almost always, errors in loading files here are due to how many question marks there are within the config file path definitions. Cannot be relative path.
                 close('all');
             end
         else

@@ -1,4 +1,4 @@
-    function [subj] = fmri_unwarp (all_proc_files,subj, discard_dummies, ver)
+function [subj] = fmri_unwarp (all_proc_files,subj, discard_dummies, ver)
 display('Running fmri_unwarp');
 
 global special_templates subj_t1_dir subj_t1_file;
@@ -24,7 +24,7 @@ elseif trs < 2; %need to split out nii file with ",number_of_volume"
         selected_proc_files = selected_proc_files(5:end); %discards the first four scans
     end
     mean_img = rdir(strcat('mean*',',5')); %so the image isn't empty
-    
+
 else %individual files for the volumes exist and need to be loaded sequentially
     selected_proc_files = all_proc_files';
     mean_img = rdir(strcat('mean*')); %so the image isn't empty
@@ -78,6 +78,6 @@ matlabbatch{1}.spm.spatial.realignunwarp.uwroptions.prefix = 'u';
      save(savefile, 'matlabbatch');
 
 %% Run the batch
-spm_jobman('run',matlabbatch) 
+spm_jobman('run',matlabbatch)
 disp('unwarping complete')
 end

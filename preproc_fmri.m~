@@ -34,8 +34,8 @@ function [subj,taskArray] = preproc_fmri(ver, templates, subjs, taskArray, stc,p
 
 
 %% set defaults
-tool_dir = fileparts(fileparts(which('preproc_fmri')));
-addpath([tool_dir filesep 'general_utilities']);
+    tool_dir = fileparts(fileparts(which('preproc_fmri')));
+    addpath([tool_dir filesep 'general_utilities']);
 
 [spm_home, template_home] = update_script_paths(tool_dir);
 
@@ -67,7 +67,7 @@ else
 %% Choose the template
 if eq(special_templates,1)
     global template_file
-    disp('Please select a 4D Tissue Probability Map.');
+    disp('Please select a 4D Tissue Probability Map.'); 
     tempfile = cellstr(spm_select([1,Inf],'image','Select the template to use throughout the analysis','',pwd));
     tempfile = textscan(tempfile{1,1}, '%s', 'Delimiter',',');
     template_file = tempfile{1,1}{1}; %Must have the ",1" removed for accurate handling elsewhere
@@ -112,14 +112,14 @@ projName = projName{1,1}{end};
 pFiles = size(pth_subjdirs);
 pFiles = pFiles(1);
 for iSubj = 1:pFiles;
-
+    
     for iTask = 1:length(taskArray);
     if eq(redo_segment,1) && iTask == 1
         subj_redo_segment = redo_segment; % so that it is a semi-global variable that can be reset at each loop to avoid an accidental, infinite loop
         disp('Redoing the segmentation.');
     else
         subj_redo_segment = 0;
-    end
+    end 
         task    = pth_taskdirs(iTask).task; %stored from file_selector_task
         rawDirName = pth_taskdirs(iTask).rawDir;
         pth_taskdirs(iTask).fileDirs = unique(pth_taskdirs(iTask).fileDirs);
@@ -134,9 +134,9 @@ for iSubj = 1:pFiles;
             spIx = find(~cellfun('isempty',spIx)==1,1,'last');
             subj_pth = subj_pth{1,1}(2:spIx-1);
             [proj_dir subj unk] = fileparts(strtrim(sprintf('/%s',subj_pth{:}))); %defines various pieces that are used to build paths and checks elsewhere.
-
+            
             subj_prefix = (subj(1:end-1)); %Also for multiple timepoints, where T1 is not collected at all timepoints.
-
+            
             task_dir = strcat(pth_taskdirs(iTask).fileDirs{iSubj}); %,filesep, subj,filesep,task);
             if isempty(pth_taskdirs(iTask).rawDir);
                 raw_dir = task_dir
@@ -145,34 +145,34 @@ for iSubj = 1:pFiles;
             else
                 raw_dir = strcat(task_dir,filesep, rawDirName)
             end
-
+            
             %% Find the Images
             imgFiles = dir(fullfile(raw_dir,'*.nii'));
             if isempty(imgFiles)
                 imgFiles = dir(fullfile(raw_dir,'*.img'));
             end
-
+            
             findShort = cellfun(@(x) numel(x), {imgFiles.name});
             imgNames = imgFiles(findShort == min(findShort));
             if length(imgNames) > 1
                 dims = '3d';
-                ext = textscan(imgNames(1).name,'%s','Delimiter','.');
+                ext = textscan(imgNames(1).name,'%s','Delimiter','.');           
                 ext = ext{1,1}{end};
                 nVols = length(imgNames);
             else
                 dims = '4d';
-                ext = textscan(imgNames.name,'%s','Delimiter','.');
+                ext = textscan(imgNames.name,'%s','Delimiter','.');           
                 ext = ext{1,1}{end};
                 nVols = length(spm_vol([raw_dir, filesep, imgNames(1).name]));
             end
-
+            
             if exist('prefix', 'var');
                 inputImg = strcat(char(prefix),imgNames(end).name);
             else
                 inputImg = imgNames(end).name;
             end
             inputImg = strcat(inputImg(1:end-7),'*'); %backs off the extension and up to 999 volumes
-
+            
             if exist('prefix', 'var');
                 check_if_unwarped = rdir(strcat(raw_dir,filesep,inputImg));
                 if isempty(check_if_unwarped);
@@ -190,13 +190,13 @@ for iSubj = 1:pFiles;
                     fmri_unwarp(orig_files, subj, discard_dummies, ver)
                 end
             end
-
+            
             if eq(stc,1);
                 check_if_processed = rdir(strcat(raw_dir,filesep,'swa',inputImg));
             else
                 check_if_processed = rdir(strcat(raw_dir,filesep,'sw',inputImg));
             end
-
+            
             if isempty(check_if_processed) || eq(ignore_preproc,1); %meaning if the files have not been smoothed, the rest of the process should also be validated/run
                 %% find t1
                 cd (proj_dir)
@@ -209,21 +209,21 @@ for iSubj = 1:pFiles;
                         disp('Did not find T1.');
                     end
                 end
-
+                
                 [~, t1_check] = fileparts(subj_t1_file);
                 if eq(special_templates,1) %Allie's study has a different structure.
                     if isempty(strfind(t1_check,subj))
                         clear subj_t1_dir subj_t1_file; %need to clear the variables, b/c won't be aligning to the correct brain.
                     end
                 end
-
+                
                 %% STC
-
+                
                 if eq(stc,1); %only runs if you selected STC
-
+                    
                     orig_files = cell(1,nVols);
                     if  strcmp(dims,'4d');
-
+                        
                         if exist('prefix','var');
                             for iOF = 1: nVols %counter for "Original Files"
                                 orig_files{1,iOF} = (fullfile(raw_dir,[prefix,imgNames.name,',',int2str(iOF)])); %unwarping NII
@@ -244,8 +244,8 @@ for iSubj = 1:pFiles;
                             end
                         end
                     end
-
-
+                    
+                    
                     check_stc  = dir(strcat(raw_dir,filesep,'a',inputImg));
                     if isempty(check_stc);
                         cd (raw_dir) %ensure starting point
@@ -253,13 +253,13 @@ for iSubj = 1:pFiles;
                         fmri_stc(orig_files,discard_dummies);
                     end
                 end
-
+                
                 %% Find files for realignment through smoothing
-
+                
                 display('Finding files to realign, coregister, and smooth...')
                 if eq(stc,1);
                     files_to_process = dir((strcat(raw_dir,filesep,'a',inputImg))); %unwarping
-
+                    
                     proc_files = cell(1,length(files_to_process));
                     for iPF = 1: length(files_to_process); %counter for "Processed Files"
                         proc_files{1,iPF} = fullfile(raw_dir,files_to_process(iPF).name);
@@ -274,14 +274,14 @@ for iSubj = 1:pFiles;
                         proc_files{1,iPF} = fullfile(files_to_process(iPF).name);
                     end
                 end
-
-
+                
+                
                 cd (raw_dir) %prevents having to pass extra arguments to fmri_realign2smooth
                 %% Realignment through smoothing
                 fprintf('Subject: %s\n',subj);
-
+                
                 fmri_realign2smooth (proc_files, subj, subj_redo_segment, discard_dummies, ver);
-
+                
                 settingsFile = strcat(raw_dir,filesep,'fmri_analysis_settings.mat');
                 save(settingsFile,'settings');
 
@@ -289,8 +289,8 @@ for iSubj = 1:pFiles;
                 fprintf('Located  %d processed image(s) \n', length( check_if_processed));
             end
         end
-
-        if eq(runArt,1) && isempty(rdir(strcat(raw_dir,filesep,'*_art_graphs*')));
+        
+        if eq(runArt,1) && isempty(rdir(strcat(raw_dir,filesep,'*art_graphs*')));
             disp('Attempting to run ART motion correction.');
             art_mtncorr(subj, raw_dir);
         end
