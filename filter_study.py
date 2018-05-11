@@ -3,10 +3,10 @@
 This script imports the study-wide, demographic spreadsheet and allows the user to generate the new cell arrays and naming labels automatically for each analysis, saving a lot of brain power, time to manually filter and create lists in text files, and reducing mistakes."""
 import os.path as op
 
-def define_filters(**kwargs):
+def define_filter_list(**kwargs):
     """Choose filters based on who you want to include in an analysis"""
     filter_dict = {'gender':'all', #all, m, f
-                    'bmi' : 'all', #all, obese
+                    'obese' : 'all', #all, obese
                     'tx' : 'all', # a, b
                     'imaging' : 'avlbl', #default to limit the people to successful scans
                     'normal_responder' :'all'}
