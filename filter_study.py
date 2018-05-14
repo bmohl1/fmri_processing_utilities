@@ -46,6 +46,9 @@ class GroupDef:
         self.df = df
 
     def __repr__(self):
+        return ('Characteristics of GroupDef(), such as self.filter')
+
+    def __str__(self):
         return self.dir
 
     def filter_subjs(self):
