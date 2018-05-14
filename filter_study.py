@@ -3,10 +3,10 @@
 This script imports the study-wide, demographic spreadsheet and allows the user to generate the new cell arrays and naming labels automatically for each analysis, saving a lot of brain power, time to manually filter and create lists in text files, and reducing mistakes."""
 import os.path as op
 
-def define_filters(**kwargs):
+def define_filter_list(**kwargs):
     """Choose filters based on who you want to include in an analysis"""
     filter_dict = {'gender':'all', #all, m, f
-                    'bmi' : 'all', #all, obese
+                    'obese' : 'all', #all, obese
                     'tx' : 'all', # a, b
                     'imaging' : 'avlbl', #default to limit the people to successful scans
                     'normal_responder' :'all'}
@@ -17,20 +17,20 @@ def define_filters(**kwargs):
     #Update the default dictionary with any new filter values
     else:
         for kw,kwval in kwargs.items():
-            filter_dict[kw] = kwval
+            filter_dict[kw] = kwval.strip()
 
     #Create a string to add to the end of files to keep the analyses straight
     filters = list()
     suffix = list()
     if filter_dict['tx'] != 'all':
-        filters.append((filter_dict['tx'][0].upper()+'_')) #Special condition, so that Tx will always be before other filters
+        filters.append((filter_dict['tx'].strip()[0].upper()+'_')) #Special condition, so that Tx will always be before other filters
 
     for k,v in filter_dict.items():
         if k != 'tx' and v not in ('all', 'avlbl'):
             filters.append(v[0].lower()) #to get the first letter of the filter
             suffix.append(k[0].lower())
 
-    if len(filters) == 0:
+    if len(filters) < 2:
         filters = ('inclusive'); #Edge case, where you want the entire population for a one-sample t-test
         suffix  = ('inclusive');
 
@@ -44,6 +44,12 @@ class GroupDef:
         self.filter_dict = filter_dict
         self.covar_list = covars
         self.df = df
+
+    def __repr__(self):
+        return ('Characteristics of GroupDef(), such as self.filter')
+
+    def __str__(self):
+        return self.dir
 
     def filter_subjs(self):
         """Whittle the DF to only the people that fit the filter"""
