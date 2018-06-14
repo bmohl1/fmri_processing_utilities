@@ -67,38 +67,38 @@ for iTask = 1:nTasks;
             subj = tmp{1,1}{end};
             clear tmp
         end
-        
+
         subj_prefix = (subj(1:end-1)); %Also for multiple timepoints, where T1 is not collected at all timepoints
-        
+
         ix = strfind(task,'_run'); %Specific to dir names with 'run' in them.
         if isempty(ix)
             taskName=task
         else
             taskName = task(1:ix-1);
         end
-        
+
         if eq(runArt,1) %from the checkbox setup
             results_dir = [subj_pth,filesep,taskName,'_resultsArt'];
         else
             results_dir = [subj_pth,filesep,taskName,'_results'];
         end
-        
+
         if eq(unwarp,1)
             results_dir = [results_dir, '_unwarp'];
         end
-        
-        
+
+
         if ~isempty (dirName) %capability to quickly run experiments on other processing options w/o overwriting the original results
-            if ~contains(dirName,'Enter'); %'Enter special suffix here' doesn't need to be added... so skip changing the directory name, if the default was unchanged
+            if isempty(~contains(dirName,'Enter')); %'Enter special suffix here' doesn't need to be added... so skip changing the directory name, if the default was unchanged
                 results_dir = [results_dir,'_',dirName];
             end
         end
-        
+
         check = rdir(results_dir);
         if isempty(check);
             mkdir (results_dir);
         end
-        
+
         check_spm = rdir ([results_dir, filesep, 'beta_0001.nii']);
         spm_exists = (arrayfun(@(x) ~isempty(x.name),check_spm) == 1);
         if ~isempty(spm_exists) &&  eq(ignore_preproc,0)
@@ -108,36 +108,36 @@ for iTask = 1:nTasks;
             if exist(strcat(results_dir, filesep, 'SPM.mat'),'file')
                 delete (strcat(results_dir, filesep, 'SPM.mat')); %Or else GUI will pop up asking to overwrite. Supremely inconvenient for batching overnight
             end
-            
+
             %% Check that all runs have been processed
             for r = 1: nRuns
                 locateImg = [subj_pth,filesep,taskArray{r},filesep,[prefix,'*.nii']];
-                
+
                 imgFiles = rdir(locateImg);
             end
-            
+
             if length(imgFiles) < 1
                 fprintf ('Oops. Missing image files called: \n%s\n',locateImg)
                 fprintf('Please process first: %s\n',subj);
                 %preproc_fmri(ver, templates, subjs, taskArray, stc)
                 %preproc_fmri('12b','no', subj, taskName, 'no',0); % 0 for NO prefix
-                
+
                 continue
             else
                 %% Continue with loading files for 2nd level
                 sw_files = cell(length(taskArray),1); % just initializing cell array for the smoothed, normalized files; should be empty
-                
+
                 for t = 1: length(taskArray)
                     locateImg = [subj_pth,filesep,taskArray{t},'*',filesep,[prefix,'*.nii']];
-                    
+
                     imgFiles = rdir(locateImg);
                     findShort = cellfun(@(x) numel(x), {imgFiles.name}); % in case there are multiple processing pipelines completed on the same brain
                     imgNames = imgFiles(findShort == min(findShort));
-                    
+
                     if length(imgNames) > 1 %The ANALYZE and 3D NII condition
                         nVols = length(imgNames);
                         tmp_sw_files = cell(1,nVols);
-                        
+
                         for iOF = 1: nVols
                             tmp_sw_files{1,iOF} = imgNames(iOF).name;
                         end
@@ -145,20 +145,20 @@ for iTask = 1:nTasks;
                         nVols = spm_vol(imgNames.name);
                         nVols = length(nVols);
                         tmp_sw_files = cell(1,nVols);
-                        
+
                         for iOF = 1: nVols
                             tmp_sw_files{1,iOF} =char(strcat(imgNames.name,',', int2str(iOF)));
                         end
                     end
                     sw_files{t,1} = tmp_sw_files;
                 end
-                
+
                 %% Best practice matlabbatch setup
                 clear matlabbatch
                 disp('Initializing SPM batch variables');
                 spm_jobman('initcfg');
                 spm('defaults','FMRI');
-                
+
                 %% Clean the file list
                 for sw = 1: length(sw_files);
                     dropIx = []; %cleaning step
@@ -171,7 +171,7 @@ for iTask = 1:nTasks;
                     end
                     sw_files{sw,1}(dropIx) = []; %removes any entries fitting the exclusion criteria for that scan series
                 end
-                
+
                 %% Defining the contrasts
                 %contrast_design_file = rdir([proj_dir,filesep,'*', taskName,'*_contrasts*']);
                 contrast_design_file = rdir([proj_dir,filesep, taskName,'*_contrasts*']);
@@ -183,15 +183,15 @@ for iTask = 1:nTasks;
                 tIx = find(strcmp('titles',raw(1,:))); %names for the top of the glass brains
                 cIx = find(strcmp('contrasts',raw(1,:))); %contrast vectors
                 kindIx = find(strcmp('type',raw(1,:))); % tcon or fcon (to increase flexibility
-                
+
                 contrast_array = struct();
                 contrast_array(1,1).title = raw(:,tIx);
                 contrast_array(1,1).con = raw(:,cIx);
                 contrast_array(1,1).kind = raw(:,kindIx);
-                
+
                 nCons = length(contrast_array(1,1).con)-1;
                 fprintf('Discovered %d contrasts to create\n',nCons);
-                
+
                 %% Entering the variables
                 matlabbatch{1}.spm.stats.fmri_spec.dir = {results_dir};
                 matlabbatch{1}.spm.stats.fmri_spec.timing.units = 'secs';
@@ -208,10 +208,10 @@ for iTask = 1:nTasks;
                 matlabbatch{2}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
                 matlabbatch{2}.spm.stats.fmri_est.write_residuals = 0;
                 matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
-                
+
                 %% Find smoothed files, condition regressors, and contrast files
                 % Customized for number of runs
-                
+
                 study_design_file = rdir([proj_dir,filesep,'*',taskName,'*_param*']);
                 if length(study_design_file.name) == 0
                     fprintf('Design parameters for %s in %s\nPlease correct before continuing\n',taskName, proj_dir);
@@ -221,7 +221,7 @@ for iTask = 1:nTasks;
                 nIx = find(strcmp('names',raw(1,:)));
                 onIx = find(strcmp('onsets',raw(1,:)));
                 durIx = find(strcmp('durations',raw(1,:)));
-                
+
                 for r = 1:nRuns
                     %% Set the parameters
                     nEntries = (length(raw(:,1))-1)/nRuns; %subtract one for header
@@ -230,12 +230,12 @@ for iTask = 1:nTasks;
                     nVals = raw(firstEntry:lastEntry,nIx);
                     onVals = raw(firstEntry:lastEntry,onIx);
                     durVals = raw(firstEntry:lastEntry,durIx);
-                    
+
                     cndtn_array = struct();
                     cndtn_array(1,1).name = nVals;
                     cndtn_array(1,1).onset = onVals;
                     cndtn_array(1,1).dur = durVals;
-                    
+
                     %Obsolete code that is not super flexible for different numbers of collected volumes
                     %               nVols = numel(sw_files)/nRuns;
                     %               lastVol = nVols*r; %The number of scans that go with each run times the run number
@@ -247,10 +247,10 @@ for iTask = 1:nTasks;
                     %               end
                     % Better solution (which required the sw_files to be defined with a cell):
                     scan_files = sw_files{r,1};
-                    
+
                     q = taskArray{r};
                     taskNum = q(end);
-                    
+
                     %Raw directory definition
                     ix = strfind(task,'_run'); %Specific to dir names with 'run' in them.
                     if isempty(ix)
@@ -258,7 +258,7 @@ for iTask = 1:nTasks;
                     else
                         raw_dir = [subj_pth,filesep,taskName,'_run', taskNum];
                     end
-                    
+
                     if eq(runArt,1)
                         rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_and_movement*'));
                         if isempty(arrayfun(@(x) ~isempty(x),rp_file))
@@ -266,14 +266,14 @@ for iTask = 1:nTasks;
                             art_mtncorr(subj, raw_dir);
                             rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_and_movement*'));
                         end
-                        
+
                         if exist('regs','var') %for unwarped analyses
                             rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_w*'));
                             if isempty(rp_file)
                                 rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_sw*'));
                             end
                         end
-                        
+
                         load(rp_file.name);
                         if exist('R','var')
                             %Tallyies the frames identified for despiking
@@ -284,11 +284,11 @@ for iTask = 1:nTasks;
                             cmd = sprintf('echo %s %0d\t "Signal SD: 5.0; FD motion: 1.0" >> %s', subj, tps, art_report);
                             system(cmd);
                         end
-                        
+
                         if (r==1)
                             nMtnRegs = size(R,2); %R is the name of the matrix from the rp_file (runArt sets the name)
                         end
-                        
+
                     else
                         if ~exist('regs','var')
                             rp_file = rdir(strcat(raw_dir,filesep,'rp*','.txt'));
@@ -312,11 +312,11 @@ for iTask = 1:nTasks;
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).regress = struct('name', {}, 'val', {});
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).multi_reg = {rp_file.name};
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).hpf = hpf;
-                    
+
                     savefile = [subj_pth,filesep,'firstLevel_' taskName '_' subj '.mat'];
                     save(savefile, 'matlabbatch');
                 end
-                
+
                 if nCons >1
                     matlabbatch{3}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
                     for j = 1:nCons
@@ -333,10 +333,10 @@ for iTask = 1:nTasks;
                         else
                             fprintf('Missing contrast type (tcon or fcon) for %s\n', contrast_array(1,1).title{j+1});
                         end
-                        
+
                     end
                     matlabbatch{3}.spm.stats.con.delete = 0; %Add the SPM batch setup
-                    
+
                     %                     matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
                     %                     for k = 1:nCons
                     %                         matlabbatch{4}.spm.stats.results.conspec(k).titlestr = contrast_array(1,1).title{k+1};
@@ -352,12 +352,12 @@ for iTask = 1:nTasks;
                 else
                     disp('Please run contrast manager and results report manually')
                 end
-                
+
                 save(savefile, 'matlabbatch');
-                
+
                 spm_jobman('run',matlabbatch)
             end
         end
     end
-    
+
 end

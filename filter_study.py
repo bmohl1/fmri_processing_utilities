@@ -4,7 +4,7 @@ This script imports the study-wide, demographic spreadsheet and allows the user 
 import os.path as op
 
 def define_filter_list(**kwargs):
-    """Choose filters based on who you want to include in an analysis"""
+    """Choose filters based on who you want to INCLUDE in an analysis"""
     filter_dict = {'gender':'all', #all, m, f
                     'obese' : 'all', #all, obese
                     'tx' : 'all', # a, b
@@ -30,12 +30,16 @@ def define_filter_list(**kwargs):
             filters.append(v[0].lower()) #to get the first letter of the filter
             suffix.append(k[0].lower())
 
-    if len(filters) < 2:
-        filters = ('inclusive'); #Edge case, where you want the entire population for a one-sample t-test
-        suffix  = ('inclusive');
+    if len(suffix) < 1:
+        suffix  = ('_inclusive') #Edge case, where you want the entire population for a one-sample t-test
+    else:
+        suffix = ("_" + ''.join(map(str,suffix)))
 
-    filters = ''.join(map(str,filters))
-    suffix = ''.join(map(str,suffix))
+    if len(filters) < 2:
+        filters = (''.join(map(str,filters)) + 'inclusive'); #Edge case, where you want the entire population for a one-sample t-test
+    else:
+        filters = ''.join(map(str,filters))
+
     return (filter_dict, filters, suffix)
 
 class GroupDef:
@@ -46,10 +50,10 @@ class GroupDef:
         self.df = df
 
     def __repr__(self):
-        return ('Characteristics of GroupDef(), such as self.filter')
+        return ('Characteristics of GroupDef(), such as self.filter', dir(self))
 
     def __str__(self):
-        return self.dir
+        return self.filter, self.filter_dict, self.df.head(5)
 
     def filter_subjs(self):
         """Whittle the DF to only the people that fit the filter"""

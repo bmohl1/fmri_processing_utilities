@@ -1,4 +1,4 @@
-function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types, results_dir, result_suffixes, rd_base, timept_comparison)
+function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, results_dir, result_suffixes, rd_base, timept_comparison)
 
 
   %% Use this to do a second level statistical analysis of the priming data.
@@ -41,13 +41,13 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
     results_dir = spm_select(1,'dir','Where is the results directory?');
   end
 
-  if ~exist('rd_base','var')
-    rd_base = 'fp_resultsArt';
-  end
+if ~exist('rd_base','var')
+  rd_base = 'fp_resultsArt';
+end
 
-  if ~exist('timept_comparison','var')
-    timept_comparison = 'no';
-  end
+if ~exist('timept_comparison','var')
+  timept_comparison = 'no';
+end
 
   % Good defaults
   task_results_dir = rd_base;
@@ -72,23 +72,31 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
 
   for k=1:length(comp_types)
     clear group*
+
+    %% Trying to clean-up the variable names and make more universal
     group_properties = cell(1:length(Groups));
     for g = 1:length(Groups);
       group_properties{g}.name = Groups{k}{g};
+      group_properties{g}.def = glob([results_top_dir filesep list_main{k}{g} list_suffix{g} '*']);
+      group_properties{g}.members = textscan(fopen(group_proerties{g}.def), '%s');
+      for i=1:length(group_properties{g}.members{:})
+        subj_file = glob(char(strcat( img_dir, group_properties{g}.members{1,1}{i}, '*', filesep, task_results_dir, filesep, contrasts{j}, '.nii')));
+        group_properties{g}.files{i} =[strcat(subj_file{1},',1')];
+      end
     end
 
+    %% Old way of defining
     groupA_name = Groups{k}{1};
+    groupB_name = Groups{k}{2};
 
     groupA_def = glob([results_top_dir filesep list_main{k}{1} list_suffix{1} '*']); %added the cell ref to suffix for the python batch script
     groupA = textscan(fopen(groupA_def{1}), '%s');
 
     if length(Groups{k}) > 1
-      groupB_name = Groups{k}{2};
-      groupB_def = glob([results_top_dir filesep list_main{k}{2} list_suffix{2} '*']);
-      groupB = textscan(fopen(groupB_def{1}), '%s');
-    end
+    groupB_def = glob([results_top_dir filesep list_main{k}{2} list_suffix{2} '*']);
+    groupB = textscan(fopen(groupB_def{1}), '%s');
 
-    if length(Groups{k}) > 2
+    elseif length(Groups{k}) > 2
       groupC_name = Groups{k}{3};
       groupD_name = Groups{k}{4};
       groupC_def = glob([results_top_dir filesep list_main{k}{3} list_suffix{3} '*' ]);
@@ -129,18 +137,16 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
           groupA_files{i} = [strcat(subj_file{1},',1')];
         end
 
+        for i=1:length(groupB{:})
+          subj_file = glob(char(strcat( img_dir, groupB{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
+          groupB_files{i} = [strcat(subj_file{1},',1')];
+        end;
+
         try ~isempty(groupA_files);
           groupA_set{1,1} = groupA_files';
+          groupB_set{1,1} = groupB_files';
         catch
           disp('Did not properly locate files for analysis. Please check your list file.')
-        end
-
-        if length(Groups{k}) > 1
-          for i=1:length(groupB{:})
-            subj_file = glob(char(strcat( img_dir, groupB{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
-            groupB_files{i} = [strcat(subj_file{1},',1')];
-            groupB_set{1,1} = groupB_files';
-          end
         end
 
         if length(Groups{k}) > 2;
@@ -152,16 +158,13 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
           for i = 1:length(groupD{:})
             subj_file = glob(char(strcat( img_dir, groupD{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
             groupD_files{i} = [strcat(subj_file{1},',1')];
-          end
+          end;
           groupC_set{1,1} = groupC_files';
           groupD_set{1,1} = groupD_files';
         end
 
         %% Two sample
         if  strcmp(comp_type,'one_sample');
-          if strncmpi('y',timept_comparison,1)
-            matlabbatch{1}.spm.stats.factorial_design.des.t1.dept = 1; % not independent
-          end
           matlabbatch{1}.spm.stats.factorial_design.des.t1.scans = groupA_set{1};
           matlabbatch{3}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
           matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = [groupA_name ' activation increases'];
@@ -171,9 +174,7 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
 
 
         elseif strcmp(comp_type,'two_sample');
-            if strncmpi('y',timept_comparison,1)
-              matlabbatch{1}.spm.stats.factorial_design.des.t2.dept = 1; % not independent
-            end
+
           matlabbatch{1}.spm.stats.factorial_design.des.t2.scans1 = groupA_set{1};
           matlabbatch{1}.spm.stats.factorial_design.des.t2.scans2 = groupB_set{1};
 
@@ -188,12 +189,12 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
 
 
           %Design conditions
-          if strncmpi('y',timept_comparison,1)
-            matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).dept = 1; %one for dependent
-          end
 
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).name = factor1;
+          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).dept = 1; %one for dependent
+
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).levels = 2;
+
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).name = 'experimental manipulation';
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).levels = 2;
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).dept = 0;
@@ -237,16 +238,16 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
 
         matlabbatch{2}.spm.stats.fmri_est.spmmat(1) = cfg_dep('Factorial design specification: SPM.mat File', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
 
-        %         matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
-        %         matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
-        %         matlabbatch{4}.spm.stats.results.conspec.contrasts = Inf; % Here you can choose other specific contrasts if desired... 1-by-X array
-        %         matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
-        %         matlabbatch{4}.spm.stats.results.conspec.thresh = 0.01;
-        %         matlabbatch{4}.spm.stats.results.conspec.extent = 25;
-        %         matlabbatch{4}.spm.stats.results.conspec.mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
-        %         matlabbatch{4}.spm.stats.results.units = 1;
-        %         matlabbatch{4}.spm.stats.results.print = 'pdf';
-        %         matlabbatch{4}.spm.stats.results.write.none = 1;
+%         matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+%         matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
+%         matlabbatch{4}.spm.stats.results.conspec.contrasts = Inf; % Here you can choose other specific contrasts if desired... 1-by-X array
+%         matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
+%         matlabbatch{4}.spm.stats.results.conspec.thresh = 0.01;
+%         matlabbatch{4}.spm.stats.results.conspec.extent = 25;
+%         matlabbatch{4}.spm.stats.results.conspec.mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
+%         matlabbatch{4}.spm.stats.results.units = 1;
+%         matlabbatch{4}.spm.stats.results.print = 'pdf';
+%         matlabbatch{4}.spm.stats.results.write.none = 1;
 
 
         if ~exist(results,'dir')
