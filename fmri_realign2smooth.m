@@ -38,7 +38,7 @@ elseif trs < 2; %need to split out nii file with ",number_of_volume"
         end
     end
     mean_img = strcat('mean',fileName,',5'); %so the image isn't empty
-    
+
 else %individual files for the volumes exist and need to be loaded sequentially
     selected_proc_files = all_proc_files';
     mean_img = strcat('mean',fileName); %so the image isn't empty
@@ -50,7 +50,7 @@ if isempty(selected_proc_files)
 end
 
 scan_set = [];
-scan_set{1,1}= selected_proc_files'; % the column cellstr is necessary for SPM12 (SPM12b uses the non-transposed, row cellstr version)
+scan_set = {selected_proc_files}'; % the column cellstr is necessary for SPM12 (SPM12b uses the non-transposed, row cellstr version)
 cd(subj_dir);
 
 clear matlabbatch
@@ -114,29 +114,29 @@ if length(coreg_check) < 1 || eq(ignore_preproc,1);
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.wrap = [0 0 0];
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.mask = 1;
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.prefix = 'r';
-    
+
     save(savefile, 'matlabbatch');
-    
+
     y_img = dir(strcat(subj_t1_dir,filesep,'y_*',subj_t1_file));
     y_file = cellstr(fullfile(subj_t1_dir,y_img.name));
-    
+
     if isempty(brain_img)
         fprintf('Did not find unzipped brain for %s. Does it exist?\n',subj)
         return
     else
         brain_file = fullfile(brain_img.name);
     end
-    
+
     if ~isempty(subj_t1_file)
         disp('Can continue with realignment and coregistration');
         %% Continue matlabbatch setup
         %Common setup
-        
+
         matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.cost_fun = 'nmi';
         matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.sep = [4 2];
         matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.tol = [0.02 0.02 0.02 0.001 0.001 0.001 0.01 0.01 0.01 0.001 0.001 0.001];
         matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.fwhm = [7 7];
-        
+
         if ~strcmp(ver, '8')
             %SPM12 version
             matlabbatch{2}.spm.spatial.coreg.estimate.ref = {brain_file};
@@ -151,8 +151,8 @@ if length(coreg_check) < 1 || eq(ignore_preproc,1);
             %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.mask = 0;
             %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.prefix = 'r';
             save(savefile, 'matlabbatch');
-            
-            
+
+
             matlabbatch{3}.spm.spatial.normalise.estwrite.subj.vol = {strcat(subj_t1_dir, filesep, subj_t1_file, ',1')};
             matlabbatch{3}.spm.spatial.normalise.estwrite.subj.resample(1) = cfg_dep('Coregister: Estimate: Coregistered Images', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','cfiles'));
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
@@ -166,7 +166,7 @@ if length(coreg_check) < 1 || eq(ignore_preproc,1);
                 78 76 85];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.interp = 4;
-            
+
             matlabbatch{4}.spm.spatial.smooth.data(1) = cfg_dep('Normalise: Estimate & Write: Normalised Images (Subj 1)',...
                 substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','files'));
             save(savefile, 'matlabbatch');
@@ -196,7 +196,7 @@ if length(coreg_check) < 1 || eq(ignore_preproc,1);
             %% 8 Deformations
             %variable for this section are defined while in the t1 directory for
             %section T1 Coregisteration
-            
+
             matlabbatch{3}.spm.util.defs.comp{1}.def = y_file;
             matlabbatch{3}.spm.util.defs.ofname = '';
             matlabbatch{3}.spm.util.defs.fnames(1) = cfg_dep;
@@ -226,7 +226,7 @@ if length(coreg_check) < 1 || eq(ignore_preproc,1);
             matlabbatch{4}.spm.spatial.smooth.prefix = 's';
             save(savefile,'matlabbatch')
         end
-        
+
     else
         return
     end
@@ -245,7 +245,7 @@ else
         78 76 85];
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.interp = 4;
-    
+
     matlabbatch{2}.spm.spatial.smooth.data(1) = cfg_dep('Normalise: Estimate & Write: Normalised Images (Subj 1)',...
         substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','files'));
     save(savefile, 'matlabbatch');
