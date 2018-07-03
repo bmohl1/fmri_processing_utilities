@@ -1,7 +1,7 @@
 function first_level_spm12_denoised(subjs, taskArray)
 
 % Purpose: Create first-level designs and contrasts for task-based fMRI
-% Created: June 2017 by Brianne Mohl, PhD
+% Created: June 2017 by Brianne Sutton, PhD
 % This function should handle single and multiple runs (with separate rp
 % files)
 % Required input: *design and constrast spreadsheets in the study folder*; smoothed and
@@ -260,7 +260,7 @@ for a = 1:length(aggLevels)
                         if isempty(ls(raw_dir))
                             raw_dir = [subj_pth,filesep,taskName];
                         end
-                        
+
                         if eq(runArt,1)
                             rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_w*'));
                             if isempty(arrayfun(@(x) ~isempty(x),rp_file))

@@ -1,4 +1,8 @@
 function [subj] = fmri_unwarp (all_proc_files,subj, discard_dummies, ver)
+% Purpose: subroutine of preproc_fmri that handles requests for geometric distortion unwarping
+% Author: Brianne Sutton, PhD
+% 2017
+
 display('Running fmri_unwarp');
 
 global special_templates subj_t1_dir subj_t1_file;

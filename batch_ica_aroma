@@ -12,70 +12,70 @@ else
 fi
 
 for task in ${tasks[@]}; do
-echo "Task: $task"
+  echo "Task: $task"
 
 
-tr=2.00 #Could be auto-detected in the future
-dn='both' #the denoising approach to apply within FSL
-sw='sw' #processed image prefix
+  tr=2.00 #Could be auto-detected in the future
+  dn='both' #the denoising approach to apply within FSL
+  sw='sw' #processed image prefix
 
-if [ -z ${1} ] ; then
-  echo "Need a task to process"
-  echo "Example usage: ${prog} priming_2017 IP201 fp ts"
-  exit
-else
-  proj=${1}
-  home=`ls -d /data/images/${proj}` #consider flexible coding
-  if [ -z ${2} ] ; then
-    subjs=`ls -d ${home}/*` #build the list from all possible directories in the project
+  if [ -z ${1} ] ; then
+    echo "Need a task to process"
+    echo "Example usage: ${prog} priming_2017 IP201 fp ts"
+    exit
   else
-    subjs=`ls -d ${home}/${2}*` #build the list from specific prefixes
+    proj=${1}
+    home=`ls -d /data/images/${proj}` #consider flexible coding
+    if [ -z ${2} ] ; then
+      subjs=`ls -d ${home}/*` #build the list from all possible directories in the project
+    else
+      subjs=`ls -d ${home}/${2}*` #build the list from specific prefixes
+    fi
+    ts=${4}
   fi
-  ts=${4}
-fi
 
 
 
-for subj in ${subjs} ; do
+  for subj in ${subjs} ; do
     echo ${subj}
     runs=`ls -d ${subj}*/${task}*` #creates flexibility to locate multiple runs, but doesn't necessitate it. The inefficiency is that all folders are checked, regardless of whether there is any data insie.
     for fDir in  ${runs} ; do
-	if [[ $fDir != *"results"* ]] ; then 
-	    outDir=`echo ${fDir}/ica_test_nowarpFile` #structure that is created by FSL
-	    if [ ! -d "${outDir}" ] ; then
-		mkdir ${outDir}
-	    fi
-	    
-	    check=`ls ${outDir}/denoised*` #final output from the AROMA process. If present, will skip the next section
-	    if [ -z "${check}" ] ; then
-		rpFile=`ls ${fDir}/rp*txt` #get motion regressors
-		inFilePos=`ls ${fDir}/${sw}*nii | cut -d. -f1` #finds all possible processed matches
-		declare -a inFile=( ${inFilePos[@]/${sw}mean*/} ) #chops the mean file out, but leaves the directory... appears to run okay, but may be an issue in the future?
-		#echo "Used to be: ${inFilePos[@]}" #debugging
-		#echo "Now: ${inFile[@]}" #debugging
-		maskFile=`ls ${fDir}/*brain_mask*` #needed for AROMA to consider the proper voxels
-		
-		if [ -f "${maskFile}" ] ; then
-		    echo "BETting brain in ${fDir}"
-		    meanImg=`ls ${fDir}/${sw}mean*nii`
-		    echo /usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m #settings can be changed, but are generally fine for brain with little bias
-		    /usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m
-		    maskFile=`ls ${fDir}/*brain_mask*` #ensures the variable has been set
-		fi
-		#warpFile=`ls ${subj}/t1/y_*nii`
+      if [[ $fDir != *"results"* ]] ; then
+        outDir=`echo ${fDir}/ica_test_nowarpFile` #structure that is created by FSL
+        if [ ! -d "${outDir}" ] ; then
+          mkdir ${outDir}
+        fi
 
-		cmd=`echo ${icaA} -tr ${tr} -den ${dn} -i ${inFile}.nii -mc ${rpFile} -o ${outDir}` # -w ${warpFile}
-		echo $cmd
-		if [ -z "${ts}" ] ; then
-		    $cmd
-		else
-		    ts ${cmd}
-		fi
-	    else
-		echo "Found denoised file: ${fDir}."
-	    fi
-	fi
+        check=`ls ${outDir}/denoised*` #final output from the AROMA process. If present, will skip the next section
+        if [ -z "${check}" ] ; then
+          rpFile=`ls ${fDir}/rp*txt` #get motion regressors
+          inFilePos=`ls ${fDir}/${sw}*nii | cut -d. -f1` #finds all possible processed matches
+          declare -a inFile=( ${inFilePos[@]/${sw}mean*/} ) #chops the mean file out, but leaves the directory... appears to run okay, but may be an issue in the future?
+          #echo "Used to be: ${inFilePos[@]}" #debugging
+          #echo "Now: ${inFile[@]}" #debugging
+          maskFile=`ls ${fDir}/*brain_mask*` #needed for AROMA to consider the proper voxels
+
+          if [ -f "${maskFile}" ] ; then
+            echo "BETting brain in ${fDir}"
+            meanImg=`ls ${fDir}/${sw}mean*nii`
+            echo /usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m #settings can be changed, but are generally fine for brain with little bias
+            /usr/local/fsl/bin/bet ${meanImg} ${inFile}_brain -f 0.3 -g 0 -m
+            maskFile=`ls ${fDir}/*brain_mask*` #ensures the variable has been set
+          fi
+          #warpFile=`ls ${subj}/t1/y_*nii`
+
+          cmd=`echo ${icaA} -tr ${tr} -den ${dn} -i ${inFile}.nii -mc ${rpFile} -o ${outDir}` # -w ${warpFile}
+          echo $cmd
+          if [ -z "${ts}" ] ; then
+            $cmd
+          else
+            ts ${cmd}
+          fi
+        else
+          echo "Found denoised file: ${fDir}."
+        fi
+      fi
     done
-done
+  done
 done
 exit

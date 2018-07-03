@@ -1,4 +1,8 @@
 function [subj] = fmri_realign2smooth (all_proc_files,subj, subj_redo_segment, discard_dummies, ver)
+% Purpose: subroutine of preproc_fmri that pushes files ahead from ACPC alignment to files that can be entered into a first-level analysis
+% Author: Brianne Sutton, PhD
+% Throughout 2017
+
 display('> Subroutine: Running fmri_realign2smooth');
 [spm_home, template_home] = update_script_paths;
 

@@ -1,5 +1,5 @@
 function  fmri_stc (scan_files, discard_dummies)
-
+% Purpose: Subroutine of preproc_fmri that handles any request for slice-timing correction
 display('Start STC')
 scan_name = {};
 clear matlabbatch
@@ -30,7 +30,7 @@ if trs < 2;
     end
 else
     if eq(discard_dummies, 1)
-        
+
         scan_names = scan_files(5:end)'; %must be square brackets, so there are no quotes in the cell
         %scan_files.name must be called as scan_files(x), if the 4D nii
         %has been split

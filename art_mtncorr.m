@@ -13,7 +13,8 @@ function art_mtncorr(subjs, raw_dir, swFiles)
 
 if isempty(which('art_bmm'))
     rmpath(which('art'));
-    addpath('/home/brianne/tools/toolboxes/art');
+    art_home = fileparts(which('art_mtncorr'));
+    addpath(fullfile(art_home,'toolboxes/art'));
 end
 
 
@@ -79,7 +80,7 @@ for iSubj = 1:length(pth_subjdirs)
             [ ~, ~, ext ] =fileparts(find_files(1).name);
             if strcmp (ext, '.nii')
                 ftmp = {};
-                for jj = 1: length(spm_vol(find_files.name));
+                for jj = 1: length(spm_vol(find_files));
                     swFiles{1,jj} = strcat( find_files(1).name, ',', int2str(jj));
                 end
             elseif length(find_files) < 2

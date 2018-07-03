@@ -1,13 +1,17 @@
 function ppi_proc(subjs,task,voi,reg_var)
+% Purpose: Extract and deconvolve timeseries from PPI ROI. Includes correction for first-level regressors, average WM, and average CSF. Reconvolve and set up PPI first-level
+% Author: Brianne Sutton, PhD
+% Summer 2016
 
 %defaults
 get_mtn_reg = 'no'; %Can change and will enter the 6 regressors for the rp file along with PPI regressors
 spcfc_rslts_dir = 'yes';
 
+%paths
 tool_dir = fileparts(fileparts(which('ppi_proc')));
 addpath([tool_dir filesep 'general_utilities']);
 
-[spm_home, mni_home] = update_script_paths(tool_dir); %make sure that we're getting into SPM12b
+[spm_home, mni_home] = update_script_paths(tool_dir); %make sure that we're getting into SPM12
 
 %% Choose the mask
 if ~exist('voi','var')
@@ -101,6 +105,7 @@ for nSubj = 1:length(pth_subjdirs);
                 fprintf( '%s PPI ready \n',results_dir);
             elseif ~isempty(check_spm)
                 disp('Reconvolving the extracted signal')
+                % In the FUTURE, read in the regressors from a text file to make more flexible across studies.
                 task_regressors = [1 1 0; 2 1 -1; 3 1 1; 4 1 0]; %Definitions for the PPI. (1) Condition, (2) Include condition?, (3) How to weight the condition
                 % For EATS data, ignore "objects", subtract effect of basics, add effect of hedonics, and ingore baseline
                 if ~isempty(check_extracted)
@@ -233,6 +238,8 @@ for nSubj = 1:length(pth_subjdirs);
                 matlabbatch{2}.spm.stats.fmri_est.method.Classical = 1;
 
                 %% Contrast manager
+                % Using 'repl' allows for flexiblity betweeen subjects on the number of covariates for each session
+                % No need for tricky zero-padding schemes (plus, probably accounts for variance correctly.)
                 matlabbatch{3}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
                 matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = 'increasing interaction';
                 matlabbatch{3}.spm.stats.con.consess{1}.tcon.weights = 1;

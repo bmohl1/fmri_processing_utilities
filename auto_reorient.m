@@ -1,4 +1,7 @@
 function auto_reorient(inputScan, scan_type)
+%% Originally part of the script suite to estimate the center of the FOV and align with MNI for ACPC estimation.
+% Not used as of March 2018
+
 set_spm('8');
 spmDir=which('spm');
 spmDir=spmDir(1:end-5);
@@ -45,4 +48,3 @@ else
     fprintf('%s was aligned\n', subj);
 end
 end
-

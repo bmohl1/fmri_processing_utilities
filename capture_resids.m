@@ -1,5 +1,5 @@
 addpath('/home/brianne/tools'); % need glob
-
+% Purpose: In testing pipelines, sometimes one needs to know how the residuals are affected by pipeline choices. This script aims to quantify the mean residuals from four of our top pipeline choices.
 
 
 'ResMS.nii'

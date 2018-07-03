@@ -1,5 +1,5 @@
 function fix_data(fileName)
-% Fix 4D Nifti data
+% Fix 4D Nifti data if the dimensions are corrupted
 
 if (size(fileName, 1) > 1)
     return;
@@ -36,7 +36,7 @@ end
 
 
 if exist('fileNumber', 'var')
-    
+
     % Truncate data
     if (fileNumber > 1)
         V = V([1:fileNumber-1]);
@@ -44,14 +44,14 @@ if exist('fileNumber', 'var')
     else
         error('Data is corrupt');
     end
-    
-    
+
+
     delete(fileName);
-    
+
     %newFile = fullfile(outputDir, ['fix_', fileN, extn]);
     disp(['Rewriting file ', fileName]);
     fprintf('\n');
-    
+
     mx   = -Inf;
     mn   = Inf;
     for i=1:numel(V),
@@ -60,7 +60,7 @@ if exist('fileNumber', 'var')
         mx       = max(mx,max(dat(:)));
         mn       = min(mn,min(dat(:)));
     end;
-    
+
     sf         = max(mx,-mn)/32767;
     ni         = nifti;
     ni.dat     = file_array(fileName, [V(1).dim numel(V)], 'INT16-BE',0,sf,0);
@@ -72,11 +72,7 @@ if exist('fileNumber', 'var')
         ni.dat(:,:,:,i) = squeeze(data(:, :, :, i));
         spm_get_space([ni.dat.fname ',' num2str(i)], V(i).mat);
     end;
-    
+
     clear V data;
-    
+
 end
-
-
-
-

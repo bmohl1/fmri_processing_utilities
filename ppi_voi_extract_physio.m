@@ -1,5 +1,6 @@
 function ppi_voi_extract_physio(subjs,task,voi,reg_var, results_dir)
-
+% Purpose: Subroutine of ppi_proc which performs the physiologic VOI extraction, instead of REX or MARSBAR (purely for simplicity in deconvolving with batch editor.)
+% Author: Brianne Sutton, PhD
 %defaults
 maxima_type = ('supra'); % Change this to supra or local
 get_mtn_reg = 'yes'; %Can change and will enter the 6 regressors for the rp file along with PPI regressors

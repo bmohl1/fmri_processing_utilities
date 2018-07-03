@@ -1,5 +1,6 @@
 function ppi_voi_extraction(subjs,task,voi,reg_var)
-
+  % Purpose: Subroutine of ppi_proc which performs the VOI extraction, instead of REX or MARSBAR (purely for simplicity in deconvolving with batch editor.)
+  % Author: Brianne Sutton, PhD 
 %defaults
 voi_name = 'nAcc';
 reg_var = ('on');

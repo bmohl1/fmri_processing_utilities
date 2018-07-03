@@ -210,10 +210,13 @@ for iSubj = 1:pFiles;
                     end
                 end
 
-                [~, t1_check] = fileparts(subj_t1_file);
-                if eq(special_templates,1) %Allie's study has a different structure.
-                    if isempty(strfind(t1_check,subj))
-                        clear subj_t1_dir subj_t1_file; %need to clear the variables, b/c won't be aligning to the correct brain.
+                [subj_t1_dir, subj_t1_file, t1_ext] = locate_scan_file ('t1', subj);%checks if there is a more recent T1
+                if isempty(subj_t1_file)  && ~isempty(strfind(subj, subj_prefix)); %checks to make sure that the same subject is still being processed
+                    try
+                        display('Warning: trying to match with prefixes')
+                        [subj_t1_dir, subj_t1_file, t1_ext] = locate_scan_file ('t1', subj_prefix);
+                    catch
+                        disp('Did not find T1.');
                     end
                 end
 
@@ -279,7 +282,7 @@ for iSubj = 1:pFiles;
                 cd (raw_dir) %prevents having to pass extra arguments to fmri_realign2smooth
                 %% Realignment through smoothing
                 fprintf('Subject: %s\n',subj);
-
+                fprintf('T1: %s\n', t1_check)
                 fmri_realign2smooth (proc_files, subj, subj_redo_segment, discard_dummies, ver);
 
                 settingsFile = strcat(raw_dir,filesep,'fmri_analysis_settings.mat');
