@@ -1,4 +1,4 @@
-function  fmri_stc (scan_files, discard_dummies)
+function  fmri_stc (scan_files, settings)
 % Purpose: Subroutine of preproc_fmri that handles any request for slice-timing correction
 display('Start STC')
 scan_name = {};
@@ -14,7 +14,7 @@ if trs < 2;
     trs = length(spm_vol(scan_files{1,1})); % if the nii's are self-contained (as with dcm2nii), this option will enumerate.
     scan_files = char(scan_files{1,1});
     %% Define volumes to process
-    if eq(discard_dummies, 1)
+    if eq(settings.dummies, 1)
         for x = 5:(trs);
             scan_name{x} = strcat(scan_files,',',int2str(x)); %must be square brackets, so there are no quotes in the cell
             %scan_files.name must be called as scan_files(x), if the 4D nii
@@ -29,7 +29,7 @@ if trs < 2;
         end
     end
 else
-    if eq(discard_dummies, 1)
+    if eq(settings.dummies, 1)
 
         scan_names = scan_files(5:end)'; %must be square brackets, so there are no quotes in the cell
         %scan_files.name must be called as scan_files(x), if the 4D nii
