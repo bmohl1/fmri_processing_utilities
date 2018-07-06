@@ -13,7 +13,7 @@ function art_mtncorr(subjs, raw_dir, swFiles)
 
 if isempty(which('art_bmm'))
     rmpath(which('art'));
-    art_home = fileparts(which('art_mtncorr'));
+    art_home = fileparts(fileparts(which('art_mtncorr'))); %art_mtn_corr should be in ~/tools/fmri_processing_utilities
     addpath(fullfile(art_home,'toolboxes/art'));
 end
 
@@ -122,14 +122,10 @@ for iSubj = 1:length(pth_subjdirs)
                 rp_file = rpIx{1,1}{end};
                 if ~isempty(rp_file)
                     fprintf(fid, 'end\n\n'); %needed halfway through for ART script
-                    nameIx =  rdir([raw_dir, filesep, 'w*']);
-                    findShort = cellfun(@(x) numel(x), {nameIx.name}); % don't want to have the wmean file interrupting the pipeline, if it exists.
-                    nameIx = nameIx(findShort==min(findShort));
+                    %The following hoops are necessary because you need flexibility for the 3D nii's, but you also can't have too many ?'s and have any sort of search efficiency
+                    w_file = strcat('w',rp_file(4:end-7),'???.nii'); %parsing based on "rp_" and "???.txt" holding constant
 
-                    [ ~ , img_file, ext] = fileparts(nameIx.name);
-                    repQs = repmat('?',1,length(img_file)-5);
-
-                    fprintf(fid, 'session 1 image %s%s.nii\n', img_file(1:5),repQs); %CHECK THE NUMBER OF ???'s if you are having trouble.
+                    fprintf(fid, 'session 1 image %s\n', w_file); %CHECK THE NUMBER OF ???'s if you are having trouble.
                     fprintf(fid, 'session 1 motion %s\n\n', rp_file );
                     %fprintf(fid, 'output_dir: %s\n', raw_dir ); %Don't send to cfg file
                     %    fprintf(fid, 'stats_dir:  ${long_name}'
