@@ -55,7 +55,7 @@ clear matlabbatch
 spm_jobman('initcfg');
 save_folder = [];
 save_folder{1,1} = [subj_dir];
-coreg_check = rdir(strcat(raw_dir,filesep,'rr*nii')); %added second r just for Alex's study
+coreg_check = rdir(strcat(raw_dir,filesep,'r*nii')); %added second r just for Alex's study
 
 %% Batch setup variables
 y_img = dir(strcat(settings.subj_t1_dir,filesep,'y_*',settings.subj_t1_file));
@@ -82,14 +82,14 @@ if strcmp(settings.ver,'8')
     if isempty(y_img) && exist(settings.subj_t1_file); %The t1 existing is a second check that the
         %  correct t1 dir was identified and is will pass along an image to segment.
         fprintf('Performing Unified Segmentation: %s.\n',settings.subj_t1_file);
-        segmentation_spm8(subj);
+        segmentation_spm8(subj,settings);
     end
 elseif eq(settings.redo_segment, 1)
-    segmentation_spm12(subj,settings.redo_segment);
+    segmentation_spm12(subj,settings);
     brain_img = rdir([settings.subj_t1_dir,filesep,'*brain.nii']); % took out " subj(1:3),'*brain*', since some of the images were not renamed with subjid
     settings.redo_segment = 0; % Don't keep re-segmenting
 elseif isempty(arrayfun(@(x) isempty(x.name),brain_img))
-    segmentation_spm12(subj);
+    segmentation_spm12(subj,settings);
     brain_img = rdir([settings.subj_t1_dir,filesep,'*brain.nii']); % took out " subj(1:3),'*brain*', since some of the images were not renamed with subjid
     settings.redo_segment = 0;% Don't keep re-segmenting
 elseif isempty(settings.subj_t1_file)

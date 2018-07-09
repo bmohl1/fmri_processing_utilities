@@ -40,8 +40,33 @@ addpath([tool_dir filesep 'general_utilities']);
 [spm_home, template_home] = update_script_paths(tool_dir);
 
 persistent settings;
+
 settings = struct('art', 0, 'cancel', 0, 'dummies', 0, 'ignore_preproc', 0, 'special_templates', 0,...
           'subj_t1_dir', '', 'subj_t1_file', '',  'redo_segment', 0, 'stc', 0, 'unwarp', 0);
+
+%% specify subject directory
+switch exist('subjs','var')
+    case 1
+        [cwd,settings.pth_subjdirs] = file_selector(subjs);
+    otherwise
+        [cwd,settings.pth_subjdirs] = file_selector;
+end
+
+settings.ver = spm('ver');settings.ver(4:end); %takes off the "spm" part
+
+%% specify fMRI directory
+%structure pth_taskdirs stores .task (string), .rawDir (universal for task),
+%and .fileDirs (tailored to individual)
+switch exist('taskArray')
+    case 1
+        [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs, taskArray);
+    otherwise
+        [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs);
+end
+
+projName = textscan(settings.pth_subjdirs{1},'%s','Delimiter','/');
+settings.projName = projName{1,1}{end-1};
+
 if exist('settings_dict','var')
   % If options have been described, load them into the settings structure
   k = keys(settings_dict);
@@ -81,29 +106,6 @@ if eq(settings.special_templates,1)
     template_file = tempfile{1,1}{1}; %Must have the ",1" removed for accurate handling elsewhere
     settings.template = template_file;
 end
-
-%% specify subject directory
-switch exist('subjs','var')
-    case 1
-        [cwd,settings.pth_subjdirs] = file_selector(subjs);
-    otherwise
-        [cwd,settings.pth_subjdirs] = file_selector;
-end
-
-settings.ver = spm('ver');settings.ver(4:end); %takes off the "spm" part
-
-%% specify fMRI directory
-%structure pth_taskdirs stores .task (string), .rawDir (universal for task),
-%and .fileDirs (tailored to individual)
-switch exist('taskArray')
-    case 1
-        [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs, taskArray);
-    otherwise
-        [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs);
-end
-
-projName = textscan(settings.pth_subjdirs{1},'%s','Delimiter','/');
-settings.projName = projName{1,1}{end-1};
 
 %% Example of single prompt
 %prompt = 'Use child templates?';

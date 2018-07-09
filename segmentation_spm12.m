@@ -14,22 +14,22 @@ function [subjs] = segmentation_spm12(subjs, settings)
 
   %% Grab the files
 
-switch exist ('subjs','var')
-    case 1
-        [projDir,pth_subjdirs, subjList] = file_selector(subjs);
-    otherwise
-        [projDir,pth_subjdirs, subjList] = file_selector;
-end
+  switch exist ('subjs','var')
+  case 1
+    [projDir,pth_subjdirs, subjList] = file_selector(subjs);
+  otherwise
+    [projDir,pth_subjdirs, subjList] = file_selector;
+  end
 
-if ~exist(settings)
-      prompt = 'Use child templates?';
-      title = 'Templates';
-      x = questdlg(prompt, title ,'Yes', 'No', 'No'); %order of arguments matters
-      if strncmpi(x,'y',1)
-        settings.special_templates = 1;
-      else
-        settings.special_templates = 0;
-      end
+  if ~exist('settings','var')
+    prompt = 'Use child templates?';
+    title = 'Templates';
+    x = questdlg(prompt, title ,'Yes', 'No', 'No'); %order of arguments matters
+    if strncmpi(x,'y',1)
+      settings.special_templates = 1;
+    else
+      settings.special_templates = 0;
+    end
   end
   cd (projDir);
   %Set defaults
@@ -70,8 +70,8 @@ if ~exist(settings)
       [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file('t1',subj_prefix);
     end
     if isempty(settings.subj_t1_file)
-       try
-                [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file('anat', subj);
+      try
+        [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file('anat', subj);
       catch
         disp ('Naming scheme for the T1 directory does not follow the convention of "t1" or "anat". Please rename.')
       end
@@ -83,11 +83,11 @@ if ~exist(settings)
 
     brain_img = rdir([settings.subj_t1_dir,filesep,'*brain*']);
     check_never_processed = (isempty(arrayfun(@(x) isempty(x.name),brain_img)) &&  ~isempty(settings.subj_t1_file));
-    if eq(check_never_processed, 1) || eq(subj_redo_segment,1)
-      if strfind(settings.subj_t1_dir, subj);
+    if eq(check_never_processed, 1) || eq(settings.redo_segment,1)
+      if ~isempty(strfind(settings.subj_t1_dir, subj)) || ~isempty(strfind(settings.subj_t1_dir, subj_prefix));
         fprintf('Subroutine: Running segmentation_spm12 on %s \n', subj)
         c1_img = dir(char(glob(strcat(settings.subj_t1_dir, filesep, 'c1*', settings.subj_t1_file))));
-        if isempty(arrayfun(@(y) isempty(y.name), c1_img)) || eq(subj_redo_segment,1);
+        if isempty(arrayfun(@(y) isempty(y.name), c1_img)) || eq(settings.redo_segment,1);
           %%
           clear matlabbatch
 
@@ -96,7 +96,7 @@ if ~exist(settings)
           t1_raw_input{1,1} = t1_name;
 
           templates = {};
-          if eq (special_templates,1)
+          if eq (settings.special_templates,1)
             global template_file
             for i = 1:6;
               %templates{1,i} = {strcat(template_home,filesep,'genR_Template_',int2str(i),'_IXI550_MNI152.nii')};
