@@ -13,8 +13,8 @@ function art_mtncorr(subjs, raw_dir, swFiles)
 
 if isempty(which('art_bmm'))
     rmpath(which('art'));
-    art_home = fileparts(fileparts(which('art_mtncorr'))); %art_mtn_corr should be in ~/tools/fmri_processing_utilities
-    addpath(fullfile(art_home,'toolboxes/art'));
+    art_home = fileparts(which('art_mtncorr')); %art_mtn_corr should be in ~/tools/fmri_processing_utilities
+    addpath(fullfile(art_home,'art'));
 end
 
 
