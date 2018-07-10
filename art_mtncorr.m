@@ -1,4 +1,4 @@
-function art_mtncorr(subjs, raw_dir, swFiles)
+function art_mtncorr(subjs, raw_dir, overwrite, swFiles)
 
 %#######################################################################
 %Loads variables into a configure file that can be passed on to Art
@@ -17,6 +17,9 @@ if isempty(which('art_bmm'))
     addpath(fullfile(art_home,'art'));
 end
 
+if ~exist('overwrite','var')
+  overwrite = 0;
+end
 
 switch nargin
     case 2
@@ -62,8 +65,8 @@ for iSubj = 1:length(pth_subjdirs)
         task    = pth_taskdirs.task; %stored from file_selector_task
         rawDirName = pth_taskdirs.rawDir; % if "raw" exists in file structure
 
-        if isempty(glob(char(strcat(pth_subjdirs{iSubj}, filesep,task,filesep,'*_art_graphs*')))); % has the ART correction already been applied?
-            fprintf('Processing %s task %d \n', subj);
+        if isempty(glob(char(strcat(pth_subjdirs{iSubj}, filesep,task,filesep,'*_art_graphs*')))) || eq(overwrite,1); % has the ART correction already been applied?
+            fprintf('Processing %s task\n', subj);
             tmp = strfind(pth,subj); % Scan all the parts of the path to find which pieces should be put together for the raw directory path
             ix = find(cellfun(@(x) ~isempty(x),tmp)); %Trying to locate the path correctly
             if ix == length(pth);
@@ -72,22 +75,38 @@ for iSubj = 1:length(pth_subjdirs)
                 raw_dir = strcat(strtrim(sprintf('/%s',pth{:})),filesep,task, filesep, rawDirName);
             end
 
+            rp_file = rdir([raw_dir, filesep, 'rp_','*txt']);
+            rf = fopen(rp_file(1,1).name);
+            ln = textscan(rf,'%s', 'Delimiter','\n');
+            fclose(rf);
 
             find_files = rdir(strcat(raw_dir,filesep,'w','*.nii'));
             findShort  = cellfun(@(x) numel(x),{find_files.name}); %compare the length of all the nii's
             find_files = find_files(findShort==min(findShort));
 
+            if ~eq(numel(find_files),length(ln{1,1}));
+              try
+                eq(numel(find_files),length(ln{1,1})+4);
+                start_ix = 5
+              catch
+                fprintf('***** The number of rps and the length of the w files do not match... *********\nExiting.\n')
+                return
+              end
+            else
+              start_ix = 1
+            end
+
             [ ~, ~, ext ] =fileparts(find_files(1).name);
             if strcmp (ext, '.nii')
                 ftmp = {};
-                for jj = 1: length(spm_vol(find_files));
+                for jj = start_ix : length(spm_vol(find_files(1).name));
                     swFiles{1,jj} = strcat( find_files(1).name, ',', int2str(jj));
                 end
             elseif length(find_files) < 2
                 fprintf('Found %d files\n',length(find_files));
                 return
             else
-                for iSwF = 1: numel(find_files)
+                for iSwF = 1: numel(find_files)-4
                     swFiles{1,iSwF} = fullfile(find_files(iSwF).name);
                 end
             end
@@ -117,7 +136,6 @@ for iSubj = 1:length(pth_subjdirs)
                 fprintf(fid, 'image_dir: %s\n', raw_dir  );          % functional and movement data folders (comment these lines if functional/movement filenames below contain full path information)
                 fprintf(fid, 'motion_dir: %s\n', raw_dir  );
 
-                rp_file = rdir([raw_dir, filesep, 'rp_','*txt']);
                 rpIx = textscan(rp_file(1,1).name,'%s','Delimiter', '/');
                 rp_file = rpIx{1,1}{end};
                 if ~isempty(rp_file)

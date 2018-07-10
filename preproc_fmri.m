@@ -1,12 +1,17 @@
-function [subj,taskArray] = preproc_fmri(ver, templates, subjs, taskArray, settings_dict)
+function [subj,taskArray] = preproc_fmri(subjs, taskArray, settings_dict)
 %% batch for preprocessing fMRI data in SPM8
 %-------------------------------------------------------------
-%  Purpose: Process fMRI data for the PD Machine Learning study from slice
-%  time through smoothing.  Steps are outlined below.
-%  Author: Brianne Mohl, PhD
-% Version: 0.1 (10.17)
+% Purpose: Process fMRI data for the PD Machine Learning study from slice
+% time through smoothing.  Steps are outlined below.
+% Author: Brianne Sutton, PhD
+% Version: 0.2 (07.18)
 % -------------------------------------------------------------
-%  input variable is a string that specifis subject ID and task
+% To override any of the scripted structure for settings, one needs to supply the structure argument (e.g., settings.art = ‘art’) and new value (e.g., 1, because you want to run the script with the ART option)
+% To create a dictionary type input in MATLAB, use containers.Map({keys},{values}).
+% Example dictionary set up: new_settings = containers.Map({'art'},{1})
+% Example preproc call...
+% >>preproc_fmri('trn003',['fp_run1', 'fp_run2'], new_settings)
+
 %  This batch utilize the SPM batch system, matlabbatch. Each step will be saved as a
 %  batch fiv)le for review. go through the list and make changes to
 %  parameters as you need.
@@ -33,6 +38,8 @@ function [subj,taskArray] = preproc_fmri(ver, templates, subjs, taskArray, setti
 %   6) Smoothing - 6 FWHM kernel
 
 
+%For FUTURE: make a log of "exceptions" that will pop up for users after a batch is completed.
+
 %% set defaults
 tool_dir = fileparts(fileparts(which('preproc_fmri')));
 addpath([tool_dir filesep 'general_utilities']);
@@ -42,14 +49,20 @@ addpath([tool_dir filesep 'general_utilities']);
 persistent settings;
 
 settings = struct('art', 0, 'cancel', 0, 'dummies', 0, 'ignore_preproc', 0, 'special_templates', 0,...
-          'subj_t1_dir', '', 'subj_t1_file', '',  'redo_segment', 0, 'stc', 0, 'unwarp', 0);
+          'subj_t1_dir', '', 'subj_t1_file', '',  'redo_segment', 0, 'stc', 0, 'unwarp', 0, ...
+          'ver', '12');
 
 %% specify subject directory
 switch exist('subjs','var')
     case 1
         [cwd,settings.pth_subjdirs] = file_selector(subjs);
     otherwise
+      try
         [cwd,settings.pth_subjdirs] = file_selector;
+      catch
+        fprintf('User exited subject selection\n')
+        return %User exited
+      end
 end
 
 settings.ver = spm('ver');settings.ver(4:end); %takes off the "spm" part
@@ -61,7 +74,12 @@ switch exist('taskArray')
     case 1
         [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs, taskArray);
     otherwise
+      try
         [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs);
+      catch
+        fprintf('User exited task selection\n')
+        return %User exited
+      end
 end
 
 projName = textscan(settings.pth_subjdirs{1},'%s','Delimiter','/');
@@ -97,11 +115,17 @@ end
 if eq(settings.cancel,1)
     return
 else
+
 %% Choose the template
 if eq(settings.special_templates,1)
     global template_file
     disp('Please select a 4D Tissue Probability Map.');
-    tempfile = cellstr(spm_select([1,Inf],'image','Select the template to use throughout the analysis','',pwd));
+    [tempfile,sts] = spm_select([1,Inf],'image','Select the template to use throughout the analysis','',pwd);
+    if sts == 0
+      fprintf('User exited TPM selection\n');
+      return
+    end
+    tempfile = cellstr(tempfile);
     tempfile = textscan(tempfile{1,1}, '%s', 'Delimiter',',');
     template_file = tempfile{1,1}{1}; %Must have the ",1" removed for accurate handling elsewhere
     settings.template = template_file;
@@ -185,15 +209,15 @@ for iSubj = 1:pFiles;
                     orig_files = cell(1,nVols);
                     if strcmp(dims,'4d')
                         for iOF = 1: nVols %counter for "Original Files"
-                            orig_files{1,iOF} = [fullfile(raw_dir,imgNames.name),',', int2str(iOF) ];
+                            orig_files{1,iOF} = [strcat(raw_dir,filesep,imgNames.name),',', int2str(iOF) ];
                         end
                     else
                         for iOF = 1: nVols
-                            orig_files{1,iOF} = [fullfile(raw_dir,imgNames(iOF).name),',1']; %unwarping
+                            orig_files{1,iOF} = [strcat(raw_dir,filesep,imgNames(iOF).name),',1']; %unwarping
                         end
                     end
                     cd (raw_dir)
-                    fmri_unwarp(orig_files, subj, settings.dummies, settings.ver)
+                    fmri_unwarp(orig_files, subj, settings)
                 end
             end
 
@@ -225,21 +249,21 @@ for iSubj = 1:pFiles;
 
                         if eq(settings.unwarp,1);
                             for iOF = 1: nVols %counter for "Original Files"
-                                orig_files{1,iOF} = (fullfile(raw_dir,[unwarp_prefix,imgNames.name,',',int2str(iOF)])); %unwarping NII
+                                orig_files{1,iOF} = (strcat(raw_dir,filesep,[unwarp_prefix,imgNames.name,',',int2str(iOF)])); %unwarping NII
                             end
                         else
                             for iOF = 1: nVols;
-                                orig_files{1,iOF} = (fullfile(raw_dir,imgNames.name,',',int2str(iOF))); % normal NII
+                                orig_files{1,iOF} = (strcat(raw_dir,filesep,imgNames.name,',',int2str(iOF))); % normal NII
                             end
                         end
                     else
                         if eq(settings.unwarp,1);
                             for iOF = 1: nVols %counter for "Original Files"
-                                orig_files{1,iOF} = (fullfile(raw_dir,[unwarp_prefix,imgNames(iOF).name])); %unwarping ANALYZE
+                                orig_files{1,iOF} = (strcat(raw_dir,filesep,[unwarp_prefix,imgNames(iOF).name])); %unwarping ANALYZE
                             end
                         else
                             for iOF = 1: nVols;
-                                orig_files{1,iOF} = (fullfile(raw_dir,imgNames(iOF).name)); % normal ANALYZE
+                                orig_files{1,iOF} = (strcat(raw_dir,filesep,imgNames(iOF).name)); % normal ANALYZE
                             end
                         end
                     end
@@ -261,7 +285,7 @@ for iSubj = 1:pFiles;
 
                     proc_files = cell(1,length(files_to_process));
                     for iPF = 1: length(files_to_process); %counter for "Processed Files"
-                        proc_files{1,iPF} = fullfile(raw_dir,files_to_process(iPF).name);
+                        proc_files{1,iPF} = strcat(raw_dir,filesep,files_to_process(iPF).name);
                     end
                 else
                     find_files = rdir(char(strcat(raw_dir,filesep,inputImg))); %go find everything %unwarping
@@ -289,7 +313,8 @@ for iSubj = 1:pFiles;
             end
         end
 
-        if eq(settings.art,1) && isempty(rdir(strcat(raw_dir,filesep,'*_art_graphs*')));
+        if (eq(settings.art,1) && isempty(rdir(strcat(raw_dir,filesep,'*_art_graphs*')))...
+          || eq(settings.art,1) && eq(settings.ignore_preproc,1));
             disp('Attempting to run ART motion correction.');
             art_mtncorr(subj, raw_dir);
         end

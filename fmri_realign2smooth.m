@@ -1,4 +1,5 @@
 function [subj] = fmri_realign2smooth (all_proc_files,subj,settings)
+% fmri_realign2smooth (all_proc_files,subj,settings)
 % Purpose: subroutine of preproc_fmri that pushes files ahead from ACPC alignment to files that can be entered into a first-level analysis
 % Author: Brianne Sutton, PhD
 % Throughout 2017
@@ -55,7 +56,14 @@ clear matlabbatch
 spm_jobman('initcfg');
 save_folder = [];
 save_folder{1,1} = [subj_dir];
-coreg_check = rdir(strcat(raw_dir,filesep,'r*nii')); %added second r just for Alex's study
+coreg_check = rdir(strcat(raw_dir,filesep,'r',fileName,'.nii')); %added second r just for Alex's study
+
+%Double check that the correct number of files are actively being considered (catch for settings.dummies)
+if eq(settings.dummies,1)
+  if ~eq(length(selected_proc_files),length(coreg_check))
+    coreg_check = ''; %empty the check, because the scans need to be reprocessed from square one to match for ART, rp_files, etc.
+  end
+end
 
 %% Batch setup variables
 y_img = dir(strcat(settings.subj_t1_dir,filesep,'y_*',settings.subj_t1_file));
@@ -178,23 +186,23 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             %% SPM8 version - coreg
             matlabbatch{2}.spm.spatial.coreg.estimate.ref = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file)};
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1) = cfg_dep;
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tname = 'Source Image';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tname = 'Source Image';
             % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).name = 'filter';
             % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).value = 'image';
             % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).name = 'strtype';
             % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).value = 'e';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).sname = 'Realign: Estimate & Reslice: Mean Image';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_output = substruct('.','rmean');
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).sname = 'Realign: Estimate & Reslice: Mean Image';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_output = substruct('.','rmean');
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep;
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tname = 'Other Images';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tname = 'Other Images';
             % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).name = 'filter';
             % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).value = 'image';
             % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).name = 'strtype';
             % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).value = 'e';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).sname = 'Realign: Estimate & Reslice: Realigned Images (Sess 1)';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_output = substruct('.','sess', '()',{1}, '.','cfiles');
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).sname = 'Realign: Estimate & Reslice: Realigned Images (Sess 1)';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_output = substruct('.','sess', '()',{1}, '.','cfiles');
             save(savefile, 'matlabbatch');
             %% 8 Deformations
             %variable for this section are defined while in the t1 directory for
@@ -208,9 +216,9 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(1).value = 'image';
             % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).name = 'strtype';
             % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).value = 'e';
-            % matlabbatch{3}.spm.util.defs.fnames(1).sname = 'Coregister: Estimate: Coregistered Images';
-            % matlabbatch{3}.spm.util.defs.fnames(1).src_exbranch = substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            % matlabbatch{3}.spm.util.defs.fnames(1).src_output = substruct('.','cfiles');
+            matlabbatch{3}.spm.util.defs.fnames(1).sname = 'Coregister: Estimate: Coregistered Images';
+            matlabbatch{3}.spm.util.defs.fnames(1).src_exbranch = substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
+            matlabbatch{3}.spm.util.defs.fnames(1).src_output = substruct('.','cfiles');
             matlabbatch{3}.spm.util.defs.savedir.saveusr = save_folder;
             % matlabbatch{3}.spm.util.defs.interp = 1;
             save(savefile,'matlabbatch')
@@ -220,9 +228,9 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             % matlabbatch{4}.spm.spatial.smooth.data(1).tname = 'Images to Smooth';
             % matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.name = 'filter';
             % matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.value = 'image';
-            % matlabbatch{4}.spm.spatial.smooth.data(1).sname = 'Deformations: Warped images';
-            % matlabbatch{4}.spm.spatial.smooth.data(1).src_exbranch = substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            % matlabbatch{4}.spm.spatial.smooth.data(1).src_output = substruct('.','warped');
+            matlabbatch{4}.spm.spatial.smooth.data(1).sname = 'Deformations: Warped images';
+            matlabbatch{4}.spm.spatial.smooth.data(1).src_exbranch = substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1});
+            matlabbatch{4}.spm.spatial.smooth.data(1).src_output = substruct('.','warped');
             matlabbatch{4}.spm.spatial.smooth.fwhm = [8 8 8];
             % matlabbatch{4}.spm.spatial.smooth.dtype = 0;
             % matlabbatch{4}.spm.spatial.smooth.im = 0;
