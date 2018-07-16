@@ -39,7 +39,7 @@ elseif trs < 2; %need to split out nii file with ",number_of_volume"
     mean_img = strcat('mean',fileName,',5'); %so the image isn't empty
 
 else %individual files for the volumes exist and need to be loaded sequentially
-    selected_proc_files = all_proc_files';
+    selected_proc_files = {all_proc_files{:}};
     mean_img = strcat('mean',fileName); %so the image isn't empty
 end
 
