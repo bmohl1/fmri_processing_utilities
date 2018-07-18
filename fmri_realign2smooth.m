@@ -113,17 +113,18 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
       scan_set = {selected_proc_files}';
       matlabbatch{1}.spm.spatial.realign.estwrite.data = scan_set;
     end
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.quality = 0.9;
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.sep = 4;
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.fwhm = 5;
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.rtm = 1;
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.interp = spline; %Spline for rp
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.wrap = [0 0 0];
-    % matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.weight = '';
-    % matlabbatch{1}.spm.spatial.realign.estwrite.roptions.which = [0 1];
-    % matlabbatch{1}.spm.spatial.realign.estwrite.roptions.interp = 4;
-    % matlabbatch{1}.spm.spatial.realign.estwrite.roptions.wrap = [0 0 0];
-    % matlabbatch{1}.spm.spatial.realign.estwrite.roptions.mask = 1;
+    
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.quality = 0.9;
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.sep = 4;
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.fwhm = 5;
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.rtm = 1;
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.interp = spline; %Spline for rp
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.wrap = [0 0 0];
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.weight = '';
+    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.which = [0 1];
+    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.interp = 4;
+    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.wrap = [0 0 0];
+    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.mask = 1;
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.prefix = 'r';
 
     save(savefile, 'matlabbatch');
@@ -143,10 +144,10 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
         %% Continue matlabbatch setup
         %Common setup
 
-        % matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.cost_fun = 'nmi';
-        % matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.sep = [4 2];
-        % matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.tol = [0.02 0.02 0.02 0.001 0.001 0.001 0.01 0.01 0.01 0.001 0.001 0.001];
-        % matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.fwhm = [7 7];
+        matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.cost_fun = 'nmi';
+        matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.sep = [4 2];
+        matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.tol = [0.02 0.02 0.02 0.001 0.001 0.001 0.01 0.01 0.01 0.001 0.001 0.001];
+        matlabbatch{2}.spm.spatial.coreg.estimate.eoptions.fwhm = [7 7];
 
         if ~strcmp(settings.ver, '8')
             %SPM12 version
@@ -157,24 +158,24 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep('Realign: Estimate & Reslice: Realigned Images (Sess 1)',...
                 substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}),...
                 substruct('.','sess', '()',{1}, '.','cfiles'));
-            %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.interp = 4;
-            %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.wrap = [0 0 0];
-            %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.mask = 0;
-            %matlabbatch{2}.spm.spatial.coreg.estimate.roptions.prefix = 'r';
+            matlabbatch{2}.spm.spatial.coreg.estimate.roptions.interp = 4;
+            matlabbatch{2}.spm.spatial.coreg.estimate.roptions.wrap = [0 0 0];
+            matlabbatch{2}.spm.spatial.coreg.estimate.roptions.mask = 0;
+            matlabbatch{2}.spm.spatial.coreg.estimate.roptions.prefix = 'r';
             save(savefile, 'matlabbatch');
 
 
             matlabbatch{3}.spm.spatial.normalise.estwrite.subj.vol = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file, ',1')};
             matlabbatch{3}.spm.spatial.normalise.estwrite.subj.resample(1) = cfg_dep('Coregister: Estimate: Coregistered Images', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','cfiles'));
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasfwhm = 60;
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasfwhm = 60;
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.tpm = {tpm};
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.affreg = templateSize; %'mni' or 'subj'
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.reg = [0 0.001 0.5 0.05 0.2];
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.fwhm = 0;
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.samp = 3;
-            % matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.bb = [-78 -112 -70
-            %     78 76 85];
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.reg = [0 0.001 0.5 0.05 0.2];
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.fwhm = 0;
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.samp = 3;
+            matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.bb = [-78 -112 -70
+                78 76 85];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.interp = 4;
 
@@ -187,19 +188,19 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             matlabbatch{2}.spm.spatial.coreg.estimate.ref = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file)};
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1) = cfg_dep;
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tname = 'Source Image';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).name = 'filter';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).value = 'image';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).name = 'strtype';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).value = 'e';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).name = 'filter';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).value = 'image';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).name = 'strtype';
+            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).value = 'e';
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1).sname = 'Realign: Estimate & Reslice: Mean Image';
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_output = substruct('.','rmean');
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep;
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tname = 'Other Images';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).name = 'filter';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).value = 'image';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).name = 'strtype';
-            % matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).value = 'e';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).name = 'filter';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).value = 'image';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).name = 'strtype';
+            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).value = 'e';
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1).sname = 'Realign: Estimate & Reslice: Realigned Images (Sess 1)';
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
             matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_output = substruct('.','sess', '()',{1}, '.','cfiles');
@@ -211,29 +212,29 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             matlabbatch{3}.spm.util.defs.comp{1}.def = y_file;
             matlabbatch{3}.spm.util.defs.ofname = '';
             matlabbatch{3}.spm.util.defs.fnames(1) = cfg_dep;
-            % matlabbatch{3}.spm.util.defs.fnames(1).tname = 'Apply to';
-            % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(1).name = 'filter';
-            % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(1).value = 'image';
-            % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).name = 'strtype';
-            % matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).value = 'e';
+            matlabbatch{3}.spm.util.defs.fnames(1).tname = 'Apply to';
+            matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(1).name = 'filter';
+            matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(1).value = 'image';
+            matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).name = 'strtype';
+            matlabbatch{3}.spm.util.defs.fnames(1).tgt_spec{1}(2).value = 'e';
             matlabbatch{3}.spm.util.defs.fnames(1).sname = 'Coregister: Estimate: Coregistered Images';
             matlabbatch{3}.spm.util.defs.fnames(1).src_exbranch = substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
             matlabbatch{3}.spm.util.defs.fnames(1).src_output = substruct('.','cfiles');
             matlabbatch{3}.spm.util.defs.savedir.saveusr = save_folder;
-            % matlabbatch{3}.spm.util.defs.interp = 1;
+            matlabbatch{3}.spm.util.defs.interp = 1;
             save(savefile,'matlabbatch')
             %end 8
             %% 8 smooth
             matlabbatch{4}.spm.spatial.smooth.data(1) = cfg_dep;
-            % matlabbatch{4}.spm.spatial.smooth.data(1).tname = 'Images to Smooth';
-            % matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.name = 'filter';
-            % matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.value = 'image';
+            matlabbatch{4}.spm.spatial.smooth.data(1).tname = 'Images to Smooth';
+            matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.name = 'filter';
+            matlabbatch{4}.spm.spatial.smooth.data(1).tgt_spec{1}.value = 'image';
             matlabbatch{4}.spm.spatial.smooth.data(1).sname = 'Deformations: Warped images';
             matlabbatch{4}.spm.spatial.smooth.data(1).src_exbranch = substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1});
             matlabbatch{4}.spm.spatial.smooth.data(1).src_output = substruct('.','warped');
             matlabbatch{4}.spm.spatial.smooth.fwhm = [8 8 8];
-            % matlabbatch{4}.spm.spatial.smooth.dtype = 0;
-            % matlabbatch{4}.spm.spatial.smooth.im = 0;
+            matlabbatch{4}.spm.spatial.smooth.dtype = 0;
+            matlabbatch{4}.spm.spatial.smooth.im = 0;
             matlabbatch{4}.spm.spatial.smooth.prefix = 's';
             save(savefile,'matlabbatch')
         end
@@ -245,15 +246,15 @@ else
     savefile = ['norm2smooth_' subj '.mat'];
     matlabbatch{1}.spm.spatial.normalise.estwrite.subj.vol = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file, ',1')};
     matlabbatch{1}.spm.spatial.normalise.estwrite.subj.resample =  {coreg_check(1:end-1).name}';
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.biasfwhm = 60;
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.biasfwhm = 60;
     matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.tpm = {tpm};
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.affreg = 'mni';
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.reg = [0 0.001 0.5 0.05 0.2];
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.fwhm = 0;
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.samp = 3;
-    % matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.bb = [-78 -112 -70
-    %     78 76 85];
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.affreg = 'mni';
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.reg = [0 0.001 0.5 0.05 0.2];
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.fwhm = 0;
+    matlabbatch{1}.spm.spatial.normalise.estwrite.eoptions.samp = 3;
+    matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.bb = [-78 -112 -70
+        78 76 85];
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.interp = 4;
 
