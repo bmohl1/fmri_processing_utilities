@@ -9,6 +9,8 @@ function first_level_spm12(subjs, taskArray)
 % NOTE: Not intended to run pre/post designs together. The script expects
 % that the entered task folders are part of the same experiment.
 
+extra_regs = 'no';  % For the delayed discounting, where reaction time is an extra covariate
+taskPrefix = 'ld_';
 %% Preliminary path and defaults
 tool_dir = fileparts(fileparts(which('preproc_fmri')));
 addpath([tool_dir filesep 'general_utilities']);
@@ -41,6 +43,12 @@ switch exist ('taskArray')
         [pth_taskdirs, taskArray] = file_selector_task(pth_subjdirs, taskArray);
     otherwise
         [pth_taskdirs, taskArray] = file_selector_task(pth_subjdirs);
+end
+
+pth_subjdirs= pth_subjdirs(~cellfun('isempty', pth_subjdirs));
+for l = 1:length(pth_taskdirs)
+    pth_taskdirs(l).fileDirs = unique(pth_taskdirs(l).fileDirs);
+    pth_taskdirs(l).fileDirs = pth_taskdirs(l).fileDirs(~cellfun('isempty', pth_taskdirs(l).fileDirs));
 end
 
 runIx = strfind(taskArray,taskArray{1,1}(1:3));
@@ -211,17 +219,26 @@ for iTask = 1:nTasks;
 
                 %% Find smoothed files, condition regressors, and contrast files
                 % Customized for number of runs
-
-                study_design_file = rdir([proj_dir,filesep,'*',taskName,'*_param*']);
-                if length(study_design_file.name) == 0
-                    fprintf('Design parameters for %s in %s\nPlease correct before continuing\n',taskName, proj_dir);
-                    return
+                
+                parCheck = rdir([subj_pth,filesep, '*', taskName,'*_param*']) ;
+                if length(parCheck) > 0
+                  % Case where ER-design with individual onset times.
+                    study_design_file = rdir([subj_pth,filesep, taskPrefix,taskName,'*_param*']);
+                else
+                  % Case wher study-wide same design
+                  study_design_file = rdir([proj_dir,filesep,'*',taskName,'*_param*']);
+                end
+                if isempty(study_design_file)
+                    fprintf('Design parameters for %s in %s missing\nPlease correct before continuing\n',taskName, proj_dir);
+                    continue
                 end
                 [~,~, raw] = xlsread(study_design_file.name); % Must contain the headers listed below, with data stacked vertically underneath.
                 nIx = find(strcmp('names',raw(1,:)));
                 onIx = find(strcmp('onsets',raw(1,:)));
                 durIx = find(strcmp('durations',raw(1,:)));
-
+                if strcmpi('y', extra_regs)
+                  rtIx = find(strcmp('rt',raw(1,:)));
+                end
                 for r = 1:nRuns
                     %% Set the parameters
                     nEntries = (length(raw(:,1))-1)/nRuns; %subtract one for header
@@ -230,7 +247,10 @@ for iTask = 1:nTasks;
                     nVals = raw(firstEntry:lastEntry,nIx);
                     onVals = raw(firstEntry:lastEntry,onIx);
                     durVals = raw(firstEntry:lastEntry,durIx);
-
+                    if strcmpi('y', extra_regs)
+                      rtVals = raw(firstEntry:lastEntry,rtIx);
+                      % Hold this value for the rp file section below. That is where the regressors will go.
+                    end
                     cndtn_array = struct();
                     cndtn_array(1,1).name = nVals;
                     cndtn_array(1,1).onset = onVals;
@@ -301,6 +321,14 @@ for iTask = 1:nTasks;
                             nMtnRegs = 0;
                         end
                     end
+
+                    if strcmpi('y', extra_regs)
+                      rpVals = load(rp_file.name);
+                      rpVals = [R, rtVals];
+                      new_rp_file = [raw_dir,filesep,'tmp_mtnAndrt_regs.mat'];
+                      save(new_rp_file,'rpVals');
+                      rp_file = new_rp_file; % To load the rps with the newly added regressor automatically
+                    end
                     %% Record the parameters in the batch
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).scans = scan_files';
                     for c = 1:(length(cndtn_array(1,1).name))
@@ -313,7 +341,7 @@ for iTask = 1:nTasks;
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).multi_reg = {rp_file.name};
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).hpf = hpf;
 
-                    savefile = [subj_pth,filesep,'firstLevel_' taskName '_' subj '.mat'];
+                    savefile = [subj_pth,filesep,'firstLevel_' taskPrefix taskName '_' subj '.mat'];
                     save(savefile, 'matlabbatch');
                 end
 
@@ -354,10 +382,15 @@ for iTask = 1:nTasks;
                 end
 
                 save(savefile, 'matlabbatch');
-
-                spm_jobman('run',matlabbatch)
+                try
+                    spm_jobman('run',matlabbatch)
+                catch
+                    sprintf('Had trouble with %s',subj)
+                    continue
+                end
             end
         end
     end
 
 end
+ 

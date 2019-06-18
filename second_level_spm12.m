@@ -1,4 +1,4 @@
-function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, results_dir, result_suffixes)
+function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types, results_dir, result_suffixes, rd_base, timept_comparison)
 
 
   %% Use this to do a second level statistical analysis of the priming data.
@@ -14,18 +14,12 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
     addpath([tool_dir filesep 'general_utilities']);
   end
   [spm_home, template_home] = update_script_paths(tool_dir);
-  timept_comparison = 'no';
-  rd_base = 'fp_resultsArt';
 
-  task_results_dir = rd_base;
-  second_task_results_dir = rd_base;
-
-  if strcmpi('y',timept_comparison)
-    second_task_results_dir = strcat(rd_base, "_post");
-  end
 
   if exist('contrasts','var')
-    list_main = {{'group','group'}};
+    m = cell(1:length(Groups));
+    m(:)= {'group'};
+    list_main = {m};
     Groups = {Groups};
   else
     %% Priming setup
@@ -42,11 +36,28 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
     Groups = {{ 'primed_pre','primed_post'},{ 'primed_pre','primed_post'},{ 'primed_pre','primed_post'}};
     list_main = {{'groupA','groupB'},{'groupA','groupB'},{'groupA','groupB'}};
     list_suffix = {'_femaleAll','_obese','_all'};
-    task_results_dir = 'fp_resultsArt';
-    second_task_results_dir = 'fp_resultsArt_post';
     %contrasts = { 'con_0003_postInt_minus_preInt', 'con_0005_postInt_minus_preInt','con_0008_postInt_minus_preInt' }; % also determines the folder names for results
     contrasts = {'con_0003', 'con_0004','con_0005', 'con_0008', 'con_0009'};
     results_dir = spm_select(1,'dir','Where is the results directory?');
+  end
+
+  if ~exist('rd_base','var')
+    rd_base = 'fp_resultsArt';
+  end
+
+  if ~exist('timept_comparison','var')
+    timept_comparison = 'no';
+  end
+
+  % Good defaults
+  task_results_dir = rd_base;
+  second_task_results_dir = rd_base;
+  factor1 = 'Sample factor';
+
+  % However, sometimes, the comparisons will be time-dependent...
+  if strncmpi('y',timept_comparison,1)
+    second_task_results_dir = strcat(rd_base, "_post");
+    factor1 = 'Timepoint';
   end
 
   rValue = strfind(results_dir, 'result');
@@ -61,21 +72,28 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
 
   for k=1:length(comp_types)
     clear group*
+    group_properties = cell(1:length(Groups));
+    for g = 1:length(Groups);
+      group_properties{g}.name = Groups{k}{g};
+    end
+
     groupA_name = Groups{k}{1};
-    groupB_name = Groups{k}{2};
 
-    groupA_def = glob([results_top_dir filesep list_main{k}{1} list_suffix{k} '*']);
+    groupA_def = glob([results_top_dir filesep list_main{k}{1} list_suffix{1} '*']); %added the cell ref to suffix for the python batch script
     groupA = textscan(fopen(groupA_def{1}), '%s');
-    groupB_def = glob([results_top_dir filesep list_main{k}{2} list_suffix{k} '*']);
-    groupB = textscan(fopen(groupB_def{1}), '%s');
 
+    if length(Groups{k}) > 1
+      groupB_name = Groups{k}{2};
+      groupB_def = glob([results_top_dir filesep list_main{k}{2} list_suffix{2} '*']);
+      groupB = textscan(fopen(groupB_def{1}), '%s');
+    end
 
     if length(Groups{k}) > 2
-      groupC_name = Groups{3};
-      groupD_name = Groups{4};
-      groupC_def = glob([results_top_dir filesep list_main{k}{3} list_suffix{k} '*' ]);
+      groupC_name = Groups{k}{3};
+      groupD_name = Groups{k}{4};
+      groupC_def = glob([results_top_dir filesep list_main{k}{3} list_suffix{3} '*' ]);
       groupC = textscan(fopen(groupC_def{1}), '%s');
-      groupD_def = glob([results_top_dir filesep list_main{k}{4} list_suffix{k} '*' ]);
+      groupD_def = glob([results_top_dir filesep list_main{k}{4} list_suffix{4} '*' ]);
       groupD = textscan(fopen(groupD_def{1}), '%s');
     end
     fclose('all');
@@ -103,8 +121,7 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
 
         % setup the file
         clear matlabbatch;
-        clear groupA_files;
-        clear groupB_files;
+        clear group?_files;
 
         % In python, turn this into a dictionary
         for i=1:length(groupA{:})
@@ -112,16 +129,18 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
           groupA_files{i} = [strcat(subj_file{1},',1')];
         end
 
-        for i=1:length(groupB{:})
-          subj_file = glob(char(strcat( img_dir, groupB{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
-          groupB_files{i} = [strcat(subj_file{1},',1')];
-        end;
-
         try ~isempty(groupA_files);
           groupA_set{1,1} = groupA_files';
-          groupB_set{1,1} = groupB_files';
         catch
           disp('Did not properly locate files for analysis. Please check your list file.')
+        end
+
+        if length(Groups{k}) > 1
+          for i=1:length(groupB{:})
+            subj_file = glob(char(strcat( img_dir, groupB{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
+            groupB_files{i} = [strcat(subj_file{1},',1')];
+            groupB_set{1,1} = groupB_files';
+          end
         end
 
         if length(Groups{k}) > 2;
@@ -133,13 +152,16 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
           for i = 1:length(groupD{:})
             subj_file = glob(char(strcat( img_dir, groupD{1,1}{i}, '*', filesep, second_task_results_dir, filesep, contrasts{j}, '.nii')));
             groupD_files{i} = [strcat(subj_file{1},',1')];
-          end;
+          end
           groupC_set{1,1} = groupC_files';
           groupD_set{1,1} = groupD_files';
         end
 
         %% Two sample
         if  strcmp(comp_type,'one_sample');
+          if strncmpi('y',timept_comparison,1)
+            matlabbatch{1}.spm.stats.factorial_design.des.t1.dept = 1; % not independent
+          end
           matlabbatch{1}.spm.stats.factorial_design.des.t1.scans = groupA_set{1};
           matlabbatch{3}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
           matlabbatch{3}.spm.stats.con.consess{1}.tcon.name = [groupA_name ' activation increases'];
@@ -149,7 +171,9 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
 
 
         elseif strcmp(comp_type,'two_sample');
-
+            if strncmpi('y',timept_comparison,1)
+              matlabbatch{1}.spm.stats.factorial_design.des.t2.dept = 1; % not independent
+            end
           matlabbatch{1}.spm.stats.factorial_design.des.t2.scans1 = groupA_set{1};
           matlabbatch{1}.spm.stats.factorial_design.des.t2.scans2 = groupB_set{1};
 
@@ -164,11 +188,13 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
 
 
           %Design conditions
-          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).name = 'Tx timepoint';
-          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).levels = 2;
-          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).dept = 1; %one for dependent
+          if strncmpi('y',timept_comparison,1)
+            matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).dept = 1; %one for dependent
+          end
 
-          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).name = 'Priming intervention';
+          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).name = factor1;
+          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).levels = 2;
+          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).name = 'experimental manipulation';
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).levels = 2;
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).dept = 0;
 
@@ -211,16 +237,16 @@ function [] = second_level_spm12(contrasts, Groups, list_suffix, comp_types, res
 
         matlabbatch{2}.spm.stats.fmri_est.spmmat(1) = cfg_dep('Factorial design specification: SPM.mat File', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
 
-        matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
-        matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
-        matlabbatch{4}.spm.stats.results.conspec.contrasts = Inf; % Here you can choose other specific contrasts if desired... 1-by-X array
-        matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
-        matlabbatch{4}.spm.stats.results.conspec.thresh = 0.01;
-        matlabbatch{4}.spm.stats.results.conspec.extent = 25;
-        matlabbatch{4}.spm.stats.results.conspec.mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
-        matlabbatch{4}.spm.stats.results.units = 1;
-        matlabbatch{4}.spm.stats.results.print = 'pdf';
-        matlabbatch{4}.spm.stats.results.write.none = 1;
+        %         matlabbatch{4}.spm.stats.results.spmmat(1) = cfg_dep('Contrast Manager: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+        %         matlabbatch{4}.spm.stats.results.conspec.titlestr = '';
+        %         matlabbatch{4}.spm.stats.results.conspec.contrasts = Inf; % Here you can choose other specific contrasts if desired... 1-by-X array
+        %         matlabbatch{4}.spm.stats.results.conspec.threshdesc = 'none';
+        %         matlabbatch{4}.spm.stats.results.conspec.thresh = 0.01;
+        %         matlabbatch{4}.spm.stats.results.conspec.extent = 25;
+        %         matlabbatch{4}.spm.stats.results.conspec.mask = struct('contrasts', {}, 'thresh', {}, 'mtype', {});
+        %         matlabbatch{4}.spm.stats.results.units = 1;
+        %         matlabbatch{4}.spm.stats.results.print = 'pdf';
+        %         matlabbatch{4}.spm.stats.results.write.none = 1;
 
 
         if ~exist(results,'dir')

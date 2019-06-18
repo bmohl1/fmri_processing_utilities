@@ -78,7 +78,9 @@ function [subjs] = segmentation_spm12(subjs, settings)
     end
 
 
-
+    if isempty(settings.subj_t1_dir)
+        break
+    else
     cd (settings.subj_t1_dir)
 
     brain_img = rdir([settings.subj_t1_dir,filesep,'*brain*']);
@@ -181,5 +183,6 @@ function [subjs] = segmentation_spm12(subjs, settings)
       else
         fprintf('***%s does not match %s***\n Please ensure there is a structural scan and re-run\n',settings.subj_t1_dir, subj);
       end
+    end
     end
   end
