@@ -48,9 +48,9 @@ img_home = '/data/images';
 
 persistent settings;
 
-settings = struct('art', 0, 'cancel', 0, 'dummies', 0, 'ignore_preproc', 0, 'special_templates', 0,...
-    'subj_t1_dir', '', 'subj_t1_file', '',  'redo_segment', 0, 'stc', 0, 'unwarp', 0, ...
-    'ver', '12');
+settings = struct('art', 0, 'cancel', 0, 'dummies', 0, 'ignore_preproc', 0, ...
+'special_templates', 0,'subj_t1_dir', '', 'subj_t1_file', '',  'redo_segment', 0, ...
+'stc', 0, 'unwarp', 0, 'aCompCorr', 0, 'ver', '12');
 
 
 %% specify subject directory
@@ -83,7 +83,15 @@ settings.ver = spm('ver');settings.ver(4:end); %takes off the "spm" part
 switch exist('taskArray','var')
     case 1
         % The user has provided inputs for specific files to be analyzed.
-        [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs, taskArray);
+        try
+             %The taskArray is decomposed in file_selector_task. Leave as
+             % cell array.
+              [settings.pth_taskdirs, settings.taskArray] = file_selector_task(settings.pth_subjdirs, taskArray);
+        catch
+          fprint('Error defining task directories. (fmri_preproc line 87)')
+          return
+        end
+
     otherwise
         try
             % Pop open a GUI that will allow them to select the scans to
@@ -324,7 +332,7 @@ else
                         %% Realignment through smoothing
                         fprintf('Subject: %s\n',subj);
                         fprintf('T1: %s\n', settings.subj_t1_file)
-                        if lengthls (proc_files) > 0
+                        if length(proc_files) > 0
                             % Only processes participants with identified
                             % volumes.
                             fmri_realign2smooth (proc_files, subj, settings);
@@ -345,6 +353,34 @@ else
                         art_mtncorr(subj, raw_dir, settings.ignore_preproc);
                     end
                 end
+
+                if (eq(settings.extract_ts,1) && isempty(rdir(strcat(raw_dir,filesep,'acompcorr_regs.txt')))...
+                    || eq(settings.art,1) && eq(settings.ignore_preproc,1));
+
+                    %% Find files for realignment through smoothing
+                    display('Finding WM, CSF and normalized files for signal extraction')
+                    if eq(settings.stc,1);
+                        files_to_process = dir((strcat(raw_dir,filesep,'wa',inputImg))); %unwarping
+                        proc_files = cell(1,length(files_to_process));
+                        for iPF = 1: length(files_to_process); %counter for "Processed Files"
+                            proc_files{1,iPF} = strcat(raw_dir,filesep,files_to_process(iPF).name);
+                        end
+                    else
+                        find_files = rdir(char(strcat(raw_dir,filesep,'w',inputImg))); %go find everything %unwarping
+                        tmp = cellfun(@(x) strfind(x,'.mat'), {find_files.name}, 'UniformOutput',false);
+                        find_files = find_files(find(cellfun('isempty',tmp)));
+                        val=cellfun(@(x) numel(x),{find_files.name}); %compare the length of all the nii's
+                        files_to_process =  find_files(val==min(val)); %take the shortest ones, since SPM appends
+                        for iPF = 1: length(files_to_process)
+                            proc_files{1,iPF} = fullfile(files_to_process(iPF).name);
+                        end
+                    end
+                    [voi_prefix, t1] = fileparts(settings.subj_t1_file)
+                    wm = rdir(fullpath(voi_prefix,strcat('mwc2',t1,'.nii')));
+                    csf = rdir(fullpath(voi_prefix,strcat('mwc3',t1,'.nii')));
+                    vois = create_threshold_mask({wm,csf}) %Can enter alternate threshold if desired
+                    acompcorr = extract_voi_ts(proc_files,vois)
+                    savefile(fullfile(raw_dir, 'acompcorr_regs.txt'),acompcorr)
             end
         end
     end
