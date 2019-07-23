@@ -22,7 +22,7 @@ function varargout = preproc_fmri_firstLevel_inputVars_GUI(varargin)
 
 % Edit the above text to modify the response to help preproc_fmri_firstLevel_inputVars_GUI
 
-% Last Modified by GUIDE v2.5 03-Oct-2017 10:00:41
+% Last Modified by GUIDE v2.5 23-Jul-2019 10:23:58
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -85,6 +85,7 @@ varargout{4} = discardflag;
 varargout{5} = unwarpflag;
 varargout{6} = preprocflag;
 varargout{7} = dirNameflag;
+varargout{8} = aCompCorrflag;
 delete(handles.figure1);
 
 
@@ -186,3 +187,14 @@ function edit_dirName_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in aCompCorr_opt.
+function aCompCorr_opt_Callback(hObject, eventdata, handles)
+% hObject    handle to aCompCorr_opt (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of aCompCorr_opt
+handles.aCompCorr = get(hObject,'Value');
+guidata(hObject, handles);

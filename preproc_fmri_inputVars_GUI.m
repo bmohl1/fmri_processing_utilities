@@ -22,7 +22,7 @@ function varargout = preproc_fmri_inputVars_GUI(varargin)
 
 % Edit the above text to modify the response to help preproc_fmri_inputVars_GUI
 
-% Last Modified by GUIDE v2.5 24-Oct-2017 15:37:42
+% Last Modified by GUIDE v2.5 23-Jul-2019 10:27:39
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -88,6 +88,7 @@ varargout{5} = unwarpflag;
 varargout{6} = preprocflag;
 varargout{7} = segmentationflag;
 varargout{8} = cancelflag;
+varargout{9} = aCompCorrflag;
 
 delete(handles.figure1);
 
@@ -199,3 +200,14 @@ function figure1_SizeChangedFcn(hObject, eventdata, handles)
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in aCompCorr_opt.
+function aCompCorr_opt_Callback(hObject, eventdata, handles)
+% hObject    handle to aCompCorr_opt (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of aCompCorr_opt
+handles.aCompCorr = get(hObject,'Value');
+guidata(hObject, handles);
