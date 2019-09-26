@@ -22,7 +22,7 @@ function varargout = preproc_fmri_firstLevel_inputVars_GUI(varargin)
 
 % Edit the above text to modify the response to help preproc_fmri_firstLevel_inputVars_GUI
 
-% Last Modified by GUIDE v2.5 23-Jul-2019 10:23:58
+% Last Modified by GUIDE v2.5 23-Jul-2019 15:29:11
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -77,6 +77,7 @@ artflag = get(handles.checkbox_art,'Value');
 unwarpflag = get(handles.checkbox_unwarp,'Value');
 preprocflag = get(handles.checkbox_ignore,'Value');
 dirNameflag = get(handles.edit_dirName,'String');
+aCompCorrflag = get(handles.checkbox_aCompCorr_opt,'Value');
 %special_templates runArt stc discard_dummies prefix ignore_preproc
 varargout{1} = specialTempflag;
 varargout{2} = artflag;
@@ -189,12 +190,12 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on button press in aCompCorr_opt.
-function aCompCorr_opt_Callback(hObject, eventdata, handles)
-% hObject    handle to aCompCorr_opt (see GCBO)
+% --- Executes on button press in checkbox_aCompCorr_opt.
+function checkbox_aCompCorr_opt_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_aCompCorr_opt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of aCompCorr_opt
-handles.aCompCorr = get(hObject,'Value');
-guidata(hObject, handles);
+% Hint: get(hObject,'Value') returns toggle state of checkbox_aCompCorr_opt
+handles.aCompCorr_opt = get(hObject,'Value');
+guidata(hObject,handles);

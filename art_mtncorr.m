@@ -44,7 +44,7 @@ function art_mtncorr(subjs, raw_dir, settings, swFiles)
     end
 
     projName = textscan(cwd,'%s','Delimiter','/');
-    if strcmp(subjs,projName{1,1}{end})
+    if exist('subjs','var') && strcmp(subjs,projName{1,1}{end})
       projName = projName{1,1}{end-1};
     else
       projName = projName{1,1}{end};
@@ -128,9 +128,9 @@ function art_mtncorr(subjs, raw_dir, settings, swFiles)
         fprintf(fid, 'sessions: 1\n' );
         fprintf(fid, 'global_mean: 1\n');
         % global mean type (1: Standard 2: User-defined mask)
-        fprintf(fid, 'global_threshold: 5.0\n');
+        fprintf(fid, 'global_threshold: 6.0\n');
         % threhsolds for outlier detection
-        fprintf(fid, 'motion_threshold: 1.0\n' );
+        fprintf(fid, 'motion_threshold: 2.0\n' );
         fprintf(fid, 'motion_file_type: 0\n' );
         % motion file type (0: SPM .txt file 1: FSL .par file 2:Siemens .txt file)
         fprintf(fid, 'motion_fname_from_image_fname: 0\n' );

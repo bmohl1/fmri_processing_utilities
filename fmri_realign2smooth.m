@@ -56,8 +56,11 @@ clear matlabbatch
 spm_jobman('initcfg');
 save_folder = [];
 save_folder{1,1} = [subj_dir];
-coreg_check = rdir(strcat(raw_dir,filesep,'r',fileName,'.nii')); %added second r just for Alex's study
-
+if contains(settings.ver, '8')
+    coreg_check = rdir(strcat(raw_dir,filesep,'r',fileName,'_spm8.nii')); %added second r just for Alex's study
+else
+    coreg_check = rdir(strcat(raw_dir,filesep,'r',fileName,'.nii'))
+end
 %Double check that the correct number of files are actively being considered (catch for settings.dummies)
 if eq(settings.dummies,1)
   if ~eq(length(selected_proc_files),length(coreg_check))

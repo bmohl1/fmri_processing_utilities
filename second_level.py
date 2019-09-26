@@ -1,125 +1,26 @@
-function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types, results_dir, result_suffixes, results_dir, timept_comparison)
+import sys
+import os
+sys.path.append(os.path.expanduser('~/tools/genius'))
+
+# Define the number of groups, comparison types, etc.
+n_groups = 2
+n_timepts = 2
+group_names = ['Diet', 'Exercise']
+cons = ['0003','0005','0006,'0008']
+
+if not n_groups || not n_timepts || not group_names:
+  var_check = {n_groups:('How many groups are being compared?'), n_timepts:('How many timepoints are there?'), group_names:('What are the group names?'), cons:('Which contrast is being compared?')}
+  for k, v in var_check.items():
+    if not k:
+      k=input(v)
 
 
-  %% Use this to do a second level statistical analysis of the priming data.
-  %% This will compare two groups, those with Condition A versus those with
-  %% condition B.
-  % Co-opted by Brianne Sutton, PhD
-  % To be adapted for python in the future
 
 
-  % Define global variables including folders/destinations
-  tool_dir = fileparts(fileparts(which('second_level_spm12')));
-  if isempty(which('glob'));
-    addpath([tool_dir filesep 'general_utilities']);
-  end
-  [spm_home, template_home] = update_script_paths(tool_dir);
-  paradigm='exobk_fp';
-
-  if exist('contrasts','var')
-    m = cell(1:length(Groups));
-    m(:)= {'group'};
-    list_main = {m};
-    Groups = {Groups};
-  else
-    %% Priming setup
-    switch paradigm
-      case ('priming')
-          comp_types = {'two_sample';'one_sample' ;'one_sample';'two_sample';'one_sample' ;'one_sample'} ;%; 'full_factorial'}'two_sample', 'two_sample'
-          result_suffixes = {'','_normResp','','_placebo','_normResp_placebo','_placebo'}; %; '_stimuli_timeptDiffAll'};
-          Groups = {{ 'primed','placebo'},{ 'primed','placebo'},{'primed','placebo'},{'placebo', 'placebo'},{'placebo', 'placebo'},{'placebo', 'placebo'}};
-          list_main = {{'groupA','groupB'},{'groupA','groupA'},{'groupA','groupA'}, {'groupB','groupB'}, {'groupB','groupB'}, {'groupB','groupB'}};
-          list_suffix = {'_all','_normResp_all','_all', '_all','_normResp_all','_all'};
-          contrasts = {'con_0003'};
-
-        case ('food_pics')
-          %% Food pics setup
-          comp_types = {'two_sample';'two_sample' ;'two_sample'}; %; 'full_factorial'}'two_sample', 'two_sample'
-          result_suffixes = {'_femalesAll_active','_obese_active','_active'};%; '_stimuli_timeptDiffAll'};
-          Groups = {{ 'primed_pre','primed_post'},{ 'primed_pre','primed_post'},{ 'primed_pre','primed_post'}};
-          list_main = {{'groupA','groupB'},{'groupA','groupB'},{'groupA','groupB'}};
-          list_suffix = {'_femaleAll','_obese','_all'};
-          %contrasts = { 'con_0003_postInt_minus_preInt', 'con_0005_postInt_minus_preInt','con_0008_postInt_minus_preInt' }; % also determines the folder names for results
-          contrasts = {'con_0003', 'con_0004','con_0005', 'con_0008', 'con_0009'};
-          results_dir = spm_select(1,'dir','Where is the results directory?');
-
-        case ('exobk_fp')
-          comp_types = {};
-          result_suffixes = {};
-          Groups = {};
-          list_main = {};
-          list_suffix = {}
-          contrasts = {};
-          results_dir = {};
-          timept_comparison = 'yes';
-  end
-
-  if ~exist('results_dir','var')
-    results_dir = 'fp_results_aCompCorr';
-  end
-
-  if ~exist('timept_comparison','var')
-    timept_comparison = 'no';
-  end
-
-  % Good defaults
-  task_results_dir = results_dir;
-  second_task_results_dir = results_dir;
-  factor1 = 'Sample factor';
-
-  % However, sometimes, the comparisons will be time-dependent...
-  if strncmpi('y',timept_comparison,1)
-    second_task_results_dir = strcat(results_dir, "_post");
-    factor1 = 'Timepoint';
-  end
-
-  rValue = strfind(results_dir, 'result');
-  results_top_dir = results_dir(1:rValue-2);
-  [root_dir task] = fileparts(results_top_dir);
-  img_dir = glob(['/home/data/images/',task(1:4),'*']);
-
-  %groups = {'primed_f','control_f','primed_m','control_m'};
-  %groups={'primed_pre','primed_post','placebo_pre','placebo_post'};
-  %groups={'primed_preCon8','primed_postCon8','primed_preCon5','primed_postCon5'};
-
+# Define the file lists for each group
 
   for k=1:length(comp_types)
     clear group*
-    group_properties = cell(1:length(Groups));
-    for g = 1:length(Groups);
-      group_properties{g}.name = Groups{k}{g};
-    end
-
-    groupA_name = Groups{k}{1};
-
-    groupA_def = glob([results_top_dir filesep list_main{k}{1} list_suffix{1} '*']); %added the cell ref to suffix for the python batch script
-    groupA = textscan(fopen(groupA_def{1}), '%s');
-
-    if length(Groups{k}) > 1
-      groupB_name = Groups{k}{2};
-      groupB_def = glob([results_top_dir filesep list_main{k}{2} list_suffix{2} '*']);
-      groupB = textscan(fopen(groupB_def{1}), '%s');
-    end
-
-    if length(Groups{k}) > 2
-      groupC_name = Groups{k}{3};
-      groupD_name = Groups{k}{4};
-      groupC_def = glob([results_top_dir filesep list_main{k}{3} list_suffix{3} '*' ]);
-      groupC = textscan(fopen(groupC_def{1}), '%s');
-      groupD_def = glob([results_top_dir filesep list_main{k}{4} list_suffix{4} '*' ]);
-      groupD = textscan(fopen(groupD_def{1}), '%s');
-    end
-    fclose('all');
-
-    %%quick switch for testing opposite groups in factorial design
-    if strcmpi(timept_comparison,'y')
-      groupA = groupC;
-      groupB = groupD;
-      groupA_name = groupC_name;
-      groupB_name = groupD_name;
-    end
-
-
     cwd = pwd; % for clean-up
     comp_type = comp_types{k};
     result_suffix = result_suffixes{k};
@@ -195,10 +96,6 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
           matlabbatch{3}.spm.stats.con.consess{1}.tcon.weights = [1 -1];
           matlabbatch{3}.spm.stats.con.consess{2}.tcon.name = [groupA_name ' < ' groupB_name];
           matlabbatch{3}.spm.stats.con.consess{2}.tcon.weights = [-1 1];
-          matlabbatch{3}.spm.stats.con.consess{3}.fcon.name = [groupA_name ];
-          matlabbatch{3}.spm.stats.con.consess{3}.fcon.weights = [-1 1];
-          matlabbatch{3}.spm.stats.con.consess{4}.fcon.name = [ groupB_name];
-          matlabbatch{3}.spm.stats.con.consess{4}.fcon.weights = [0 1];          
 
           %% Full factorial
         elseif strcmp(comp_type,'full_factorial')
@@ -211,7 +108,7 @@ function [] = second_level_spm12_wlm(contrasts, Groups, list_suffix, comp_types,
 
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).name = factor1;
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(1).levels = 2;
-          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).name = 'experimental manipulation';
+          matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).name = factor2;
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).levels = 2;
           matlabbatch{1}.spm.stats.factorial_design.des.fd.fact(2).dept = 0;
 

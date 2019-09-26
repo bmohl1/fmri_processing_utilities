@@ -44,7 +44,7 @@ function [subj,taskArray] = preproc_fmri(subjs, taskArray, settings_dict)
 tool_dir = fileparts(fileparts(which('preproc_fmri')));
 addpath([tool_dir filesep 'general_utilities']);
 img_home = '/data/images';
-[spm_home, template_home] = update_script_paths(tool_dir);
+[spm_home, template_home] = update_script_paths(tool_dir, '12');
 
 persistent settings;
 
@@ -131,7 +131,7 @@ end
 if ~exist('settings_dict','var')
     [settings.special_templates settings.art settings.stc ...
         settings.dummies settings.unwarp settings.ignore_preproc ...
-        settings.redo_segment settings.cancel] = preproc_fmri_inputVars_GUI; %allows for non-scripting users to alter the settings easily
+        settings.redo_segment settings.cancel settings.aCompCorr] = preproc_fmri_inputVars_GUI; %allows for non-scripting users to alter the settings easily
     close(gcf);
     if eq(settings.unwarp,1)
         % Unwarping used for geometric distortion correction
@@ -193,8 +193,15 @@ else
                     spIx = find(~cellfun('isempty',spIx)==1,1,'last');
                     subj_pth = subj_pth{1,1}(2:spIx-1);
                     [proj_dir subj unk] = fileparts(strtrim(sprintf('/%s',subj_pth{:}))); %defines various pieces that are used to build paths and checks elsewhere.
-
-                    subj_prefix = (subj(1:end-1)); %Also for multiple timepoints, where T1 is not collected at all timepoints.
+                    cd(proj_dir);
+                    % Some participants will have disjointed functional and anatomical scans. The following lines dismantle the file path of the scans enough that locate_scan_file or locate_t1 can build a useful filepath.
+                    subj_prefixIx = strfind(subj,'_');
+                    if ~isempty(subj_prefixIx)
+                        subj_prefix = (subj(1:subj_prefixIx(1))); %Also for multiple timepoints, where T1 is not collected at all timepoints.
+                        timepoint = str2num(subj(subj_prefixIx(1)+1));
+                        alt_subjId = strcat(subj_prefix,num2str(timepoint-1)); % This will break, if the timepoint is a,b,c,etc.
+                        alt_subjId2 = strcat(subj_prefix,num2str(timepoint+1));
+                    end
 
                     task_dir = strcat(settings.pth_taskdirs(iTask).fileDirs{iSubj}); %,filesep, subj,filesep,task);
                     if isempty(settings.pth_taskdirs(iTask).rawDir);
@@ -205,8 +212,28 @@ else
                         raw_dir = strcat(task_dir,filesep, rawDirName)
                     end
 
+
+                    [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', subj);%checks if there is a more recent T1
+                    if isempty(settings.subj_t1_file)  && ~isempty(strfind(subj, subj_prefix)); %checks to make sure that the same subject is still being processed
+                        try
+                            fprintf('Warning: T1 not associated with this task.\nTrying to find proximal T1 in %s \n', alt_subjId);
+                            [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', alt_subjId);
+                        catch
+                          try
+                            fprintf('Warning: T1 not associated with this task.\nTrying to find proximal T1 in %s \n', alt_subjId2);
+                            [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', alt_subjId2);
+                          catch
+                            disp('Did not find T1.');
+                          end
+                        end
+                    end
+
                     %% Find the Images
-                    imgFiles = dir(fullfile(raw_dir,'*.nii'));
+                    if contains (settings.ver, '8')
+                        imgFiles = dir(fullfile(raw_dir,strcat('*spm8.nii')))
+                    else
+                         imgFiles = dir(fullfile(raw_dir,'*.nii'));
+                    end
                     if isempty(imgFiles)
                         imgFiles = dir(fullfile(raw_dir,'*.img'));
                     end
@@ -259,16 +286,6 @@ else
                     if isempty(check_if_processed) || eq(settings.ignore_preproc,1); %meaning if the files have not been smoothed, the rest of the process should also be validated/run
                         %% find t1
                         cd (proj_dir)
-
-                        [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', subj);%checks if there is a more recent T1
-                        if isempty(settings.subj_t1_file)  && ~isempty(strfind(subj, subj_prefix)); %checks to make sure that the same subject is still being processed
-                            try
-                                display('Warning: trying to match with prefixes')
-                                [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', subj_prefix);
-                            catch
-                                disp('Did not find T1.');
-                            end
-                        end
 
                         %% STC
                         if eq(settings.stc,1); %only runs if you selected STC
@@ -354,8 +371,8 @@ else
                     end
                 end
 
-                if (eq(settings.extract_ts,1) && isempty(rdir(strcat(raw_dir,filesep,'acompcorr_regs.txt')))...
-                    || eq(settings.art,1) && eq(settings.ignore_preproc,1));
+                if (eq(settings.aCompCorr,1) && isempty(rdir(strcat(raw_dir,filesep,'aCompCorr_WM_regs.txt')))...
+                    || eq(settings.aCompCorr,1) && eq(settings.ignore_preproc,1));
 
                     %% Find files for realignment through smoothing
                     display('Finding WM, CSF and normalized files for signal extraction')
@@ -375,12 +392,22 @@ else
                             proc_files{1,iPF} = fullfile(files_to_process(iPF).name);
                         end
                     end
-                    [voi_prefix, t1] = fileparts(settings.subj_t1_file)
-                    wm = rdir(fullpath(voi_prefix,strcat('mwc2',t1,'.nii')));
-                    csf = rdir(fullpath(voi_prefix,strcat('mwc3',t1,'.nii')));
-                    vois = create_threshold_mask({wm,csf}) %Can enter alternate threshold if desired
-                    acompcorr = extract_voi_ts(proc_files,vois)
-                    savefile(fullfile(raw_dir, 'acompcorr_regs.txt'),acompcorr)
+                %    if isempty(settings.subj_t1_file)  && ~isempty(strfind(subj, subj_prefix)); %checks to make sure that the same subject is still being processed
+                %        try
+                %            fprintf('Warning: T1 not associated with this task.\nTrying to find proximal T1 in %s \n', alt_subjId);
+                %            [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', alt_subjId);
+                %        catch
+                %            disp('Did not find T1.');
+                %            continue
+                %        end
+                  %  end
+                    gm = rdir(fullfile(settings.subj_t1_dir,strcat('mwc1',settings.subj_t1_file)));
+                    wm = rdir(fullfile(settings.subj_t1_dir,strcat('mwc2',settings.subj_t1_file)));
+                    csf = rdir(fullfile(settings.subj_t1_dir,strcat('mwc3',settings.subj_t1_file)));
+                    vois = create_threshold_mask({gm.name, wm.name,csf.name}); %Can enter alternate threshold if desired
+                    acompcorr = extract_voi_ts_compCorr(proc_files,{wm.name}); %,csf.name});
+                   save(fullfile(raw_dir, 'aCompCorr_WM_regs.txt'),'acompcorr','-ascii')
+                   cd(proj_dir)
             end
         end
     end

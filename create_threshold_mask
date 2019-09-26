@@ -1,0 +1,28 @@
+func [out_masks] = create_threshold_mask(input_files, threshold)
+
+if ~iscell(input_files)
+  rowDist = [ones(length(input_files))]
+  input_files = mat2cell(input_files, rowDist) %Split row by row, into a cell array
+end
+
+if ~exist('threshold')
+    threshold = 0.8 % Greater than 80% probability of the given tissue type or estimate
+end
+
+out_masks = []
+for f=1:length(input_files)
+  clear matlabbatch;
+  spm_jobman('initcfg');
+  [outdir, basename] = fileparts(input_files{f})
+  matlabbatch{1}.spm.util.imcalc.input = {strcat(input_files{f},',1')}; %SPM requires ,1 to load image
+  matlabbatch{1}.spm.util.imcalc.output = strcat('thresh_',basename);
+  matlabbatch{1}.spm.util.imcalc.outdir = {outdir};
+  matlabbatch{1}.spm.util.imcalc.expression = strcat('i1 >', threshold);
+  matlabbatch{1}.spm.util.imcalc.var = struct('name', {}, 'value', {});
+  matlabbatch{1}.spm.util.imcalc.options.dmtx = 0;
+  matlabbatch{1}.spm.util.imcalc.options.mask = 0;
+  matlabbatch{1}.spm.util.imcalc.options.interp = 1;
+  matlabbatch{1}.spm.util.imcalc.options.dtype = 4;
+  spm_jobman('run',matlabbatch);
+  out_masks = [out_masks;fullfile(outdir,strcat('thresh_',basename,'.nii'))]
+end

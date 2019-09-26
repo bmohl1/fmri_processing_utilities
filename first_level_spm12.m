@@ -10,18 +10,18 @@ function first_level_spm12(subjs, taskArray)
 % that the entered task folders are part of the same experiment.
 
 extra_regs = 'no';  % For the delayed discounting, where reaction time is an extra covariate
-taskPrefix = 'ld_';
+taskPrefix = ''; %'ld_';
 %% Preliminary path and defaults
 tool_dir = fileparts(fileparts(which('preproc_fmri')));
 addpath([tool_dir filesep 'general_utilities']);
 
-[spm_home, template_home] = update_script_paths(tool_dir);
+[spm_home, template_home] = update_script_paths(tool_dir,'12');
 
 hpf = 128; % High-pass filter value in Hz
 tr = 2; % might be definable by spm_vol(image) > variable(a).private.timing.tspace, but I'm not sure
 
 %% Set options
-[special_templates runArt stc discard_dummies unwarp ignore_preproc dirName] = preproc_fmri_firstLevel_inputVars_GUI; %allows for non-scripting users to alter the settings easily.
+[special_templates runArt stc discard_dummies unwarp ignore_preproc dirName aCompCorr] = preproc_fmri_firstLevel_inputVars_GUI; %allows for non-scripting users to alter the settings easily.
 close(gcf);
 if eq(unwarp,1)
     prefix = 'swu'; % Can set the letters that are expected prior to standard naming scheme on the data (e.g., 'aruPerson1_task1_scanDate.nii')
@@ -95,6 +95,9 @@ for iTask = 1:nTasks;
             results_dir = [results_dir, '_unwarp'];
         end
 
+        if eq(aCompCorr,1)
+            results_dir = [results_dir, '_aCompCorr_wm'];
+        end
 
         if ~isempty (dirName) %capability to quickly run experiments on other processing options w/o overwriting the original results
             if ~contains(dirName,'Enter'); %'Enter special suffix here' doesn't need to be added... so skip changing the directory name, if the default was unchanged
@@ -119,7 +122,18 @@ for iTask = 1:nTasks;
 
             %% Check that all runs have been processed
             for r = 1: nRuns
-                locateImg = [subj_pth,filesep,taskArray{r},filesep,[prefix,'*.nii']];
+                if strcmp(spm('ver'),'SPM8')
+                   locateImg = [subj_pth,filesep,taskArray{r},filesep,[prefix,'*spm8.nii']];
+                else
+                    locateImg = [subj_pth,filesep,taskArray{r},filesep,[prefix,'*.nii']];
+                    % Will probably need to be revisited to ensure the cell
+                    % array is properly created in 133 to find minimum
+                    % file name length.
+                    if length(locateImg) > 1
+                        val=cellfun(@(x) numel(x),{locateImg}); %compare the length of all the nii's
+                        locateImg = locateImg(val==min(val)); % If there is an spm8 processed scan, it will be ignored.
+                    end
+                end
 
                 imgFiles = rdir(locateImg);
             end
@@ -162,10 +176,10 @@ for iTask = 1:nTasks;
                 end
 
                 %% Best practice matlabbatch setup
-                clear matlabbatch
+                clear matlabbatch;
                 disp('Initializing SPM batch variables');
-                spm_jobman('initcfg');
                 spm('defaults','FMRI');
+                spm_jobman('initcfg');        
 
                 %% Clean the file list
                 for sw = 1: length(sw_files);
@@ -219,9 +233,9 @@ for iTask = 1:nTasks;
 
                 %% Find smoothed files, condition regressors, and contrast files
                 % Customized for number of runs
-                
+
                 parCheck = rdir([subj_pth,filesep, '*', taskName,'*_param*']) ;
-                if length(parCheck) > 0
+                if ~isempty(parCheck)
                   % Case where ER-design with individual onset times.
                     study_design_file = rdir([subj_pth,filesep, taskPrefix,taskName,'*_param*']);
                 else
@@ -236,14 +250,20 @@ for iTask = 1:nTasks;
                 nIx = find(strcmp('names',raw(1,:)));
                 onIx = find(strcmp('onsets',raw(1,:)));
                 durIx = find(strcmp('durations',raw(1,:)));
+                tIx = find(strcmp('task',raw(1,:)));
                 if strcmpi('y', extra_regs)
                   rtIx = find(strcmp('rt',raw(1,:)));
                 end
                 for r = 1:nRuns
                     %% Set the parameters
-                    nEntries = (length(raw(:,1))-1)/nRuns; %subtract one for header
-                    lastEntry  = int8(nEntries*r)+1;%plus one for header
-                    firstEntry = lastEntry-(nEntries-1);
+                    % Line 252 problematic for files with multiple runs
+                    % (i.e. 4) when there are only 2 runs being compared.
+                    %nEntries = (length(raw(:,1))-1)/nRuns; %subtract one for header
+                    %lastEntry  = int8(nEntries*r)+1;%plus one for header
+                    %firstEntry = lastEntry-(nEntries-1);
+                    taskEntries=find(strcmp(task,raw(:,tIx)));
+                    lastEntry= taskEntries(end);
+                    firstEntry = taskEntries(1);
                     nVals = raw(firstEntry:lastEntry,nIx);
                     onVals = raw(firstEntry:lastEntry,onIx);
                     durVals = raw(firstEntry:lastEntry,durIx);
@@ -296,10 +316,10 @@ for iTask = 1:nTasks;
 
                         load(rp_file.name);
                         if exist('R','var')
-                            %Tallyies the frames identified for despiking
+                            %Tallies the frames identified for despiking
                             %so that we can insure all groups are equally
                             %estimated.
-                            tps =size(R,2)-7
+                            tps =size(R,2)-7;
                             art_report = strcat(proj_dir, filesep, 'art_frames_identified_', task, '.txt');
                             cmd = sprintf('echo %s %0d\t "Signal SD: 5.0; FD motion: 1.0" >> %s', subj, tps, art_report);
                             system(cmd);
@@ -311,6 +331,9 @@ for iTask = 1:nTasks;
 
                     else
                         if ~exist('regs','var')
+                            if exist(rdir(strcat(raw_dir,filesep,'rp*','spm8.txt')),'file')
+                                rm (rdir(strcat(raw_dir,filesep,'rp*','spm8.txt'))); % rp's will be the same, so elminate extra copies of the text file
+                            end
                             rp_file = rdir(strcat(raw_dir,filesep,'rp*','.txt'));
                             findShort = cellfun(@(x) numel(x), {rp_file.name});
                             rp_file = rp_file(findShort == min(findShort));
@@ -324,11 +347,29 @@ for iTask = 1:nTasks;
 
                     if strcmpi('y', extra_regs)
                       rpVals = load(rp_file.name);
-                      rpVals = [R, rtVals];
+                      rpVals = [rpVals.R, rtVals];
                       new_rp_file = [raw_dir,filesep,'tmp_mtnAndrt_regs.mat'];
                       save(new_rp_file,'rpVals');
-                      rp_file = new_rp_file; % To load the rps with the newly added regressor automatically
+                      rp_file = rdir(new_rp_file); % To load the rps with the newly added regressor automatically
                     end
+
+                    if eq(aCompCorr,1)
+                      rpVals = load(rp_file.name); % Loads a structure with "R" containing the regressors.
+                      if isstruct(rpVals)
+                          rpVals = rpVals.R;
+                      end
+                      try
+                          physio = load(fullfile(raw_dir,'aCompCorr_WM_regs.txt'));
+                          R = [rpVals,physio]; %SPM expects the regressor to be called R
+                          new_rp_file = fullfile(raw_dir,'mtnAndCompCorr.mat');
+                          save(new_rp_file,'R');
+                          rp_file = rdir(new_rp_file);
+                      catch
+                          fprintf('aCompCorr not completed\n');
+                          break
+                      end
+                    end
+
                     %% Record the parameters in the batch
                     matlabbatch{1}.spm.stats.fmri_spec.sess(r).scans = scan_files';
                     for c = 1:(length(cndtn_array(1,1).name))
@@ -381,8 +422,8 @@ for iTask = 1:nTasks;
                     disp('Please run contrast manager and results report manually')
                 end
 
-                save(savefile, 'matlabbatch');
                 try
+                    save(savefile, 'matlabbatch');
                     spm_jobman('run',matlabbatch)
                 catch
                     sprintf('Had trouble with %s',subj)
@@ -393,4 +434,3 @@ for iTask = 1:nTasks;
     end
 
 end
- 

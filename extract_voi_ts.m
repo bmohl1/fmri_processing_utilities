@@ -38,5 +38,10 @@ if ~isempty(which('rex'))
         'output_folder',char(out_dir)};
      params=[]; for n1=1:2:length(fields), if ~isfield(params,fields{n1}), params=setfield(params,fields{n1},fields{n1+1}); end; end %from REX
 disp('Starting extraction')
-     regressors=rex(params); 
+     potential_comps=rex(params);
+     regressors=[];
+     for col=1:size(potential_comps{2})
+       comps=pca(potential_comps(col));
+       regressors = [regressors, comps(1:3)];
+     end
 end
