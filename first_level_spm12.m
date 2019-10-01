@@ -52,12 +52,22 @@ for l = 1:length(pth_taskdirs)
     pth_taskdirs(l).fileDirs = pth_taskdirs(l).fileDirs(~cellfun('isempty', pth_taskdirs(l).fileDirs));
 end
 
-runIx = strfind(taskArray,taskArray{1,1}(1:3));
-runIx = ~cellfun('isempty',runIx);
-nRuns = max(find(runIx==1));
-nTasks = max(find(runIx==0));
-if isempty (nTasks)
-    nTasks = 1;
+%runIx = strfind(taskArray,taskArray{1,1}(1:3));
+%runIx = ~cellfun('isempty',runIx);
+%nRuns = max(find(runIx==1));
+nRuns = length(taskArray);
+
+if exist('special_task_name','var')
+    % If mixing and matching tasks, then don't want to check for different
+    % task prefixes.
+    nTasks = 1; 
+    sessrep = 'none';
+else
+    nTasks = max(find(runIx==0));
+    if isempty (nTasks)
+        nTasks = 1;
+    end
+    sessrep = 'repl';
 end
 
 projName = textscan(cwd,'%s','Delimiter','/');
@@ -126,7 +136,7 @@ for iTask = 1:nTasks;
             if exist(strcat(results_dir, filesep, 'SPM.mat'),'file')
                 delete (strcat(results_dir, filesep, 'SPM.mat')); %Or else GUI will pop up asking to overwrite. Supremely inconvenient for batching overnight
             end
-
+            
             %% Check that all runs have been processed
             for r = 1: nRuns
                 if strcmp(spm('ver'),'SPM8')
@@ -271,7 +281,8 @@ for iTask = 1:nTasks;
                     %nEntries = (length(raw(:,1))-1)/nRuns; %subtract one for header
                     %lastEntry  = int8(nEntries*r)+1;%plus one for header
                     %firstEntry = lastEntry-(nEntries-1);
-                    taskEntries=find(strcmp(task,raw(:,tIx)));
+                    current_task = taskArray{r};
+                    taskEntries=find(strcmp(current_task,raw(:,tIx)));
                     lastEntry= taskEntries(end);
                     firstEntry = taskEntries(1);
                     nVals = raw(firstEntry:lastEntry,nIx);
@@ -298,16 +309,8 @@ for iTask = 1:nTasks;
                     % Better solution (which required the sw_files to be defined with a cell):
                     scan_files = sw_files{r,1};
 
-                    q = taskArray{r};
-                    taskNum = q(end);
-
                     %Raw directory definition
-                    ix = strfind(task,'_run'); %Specific to dir names with 'run' in them.
-                    if isempty(ix)
-                        raw_dir = [subj_pth,filesep,taskName];
-                    else
-                        raw_dir = [subj_pth,filesep,taskName,'_run', taskNum];
-                    end
+                    raw_dir = fullfile(subj_pth, filesep, current_task);
 
                     if eq(runArt,1)
                         rp_file = rdir(strcat(raw_dir,filesep,'art_regression_outliers_and_movement*'));
@@ -402,13 +405,13 @@ for iTask = 1:nTasks;
                         if strcmpi(contrast_array(1,1).kind{j+1},'tcon')
                             matlabbatch{3}.spm.stats.con.consess{j}.tcon.name = contrast_array(1,1).title{j+1};
                             matlabbatch{3}.spm.stats.con.consess{j}.tcon.weights = [str2num(contrast_array(1,1).con{j+1})]; %currently only accommodates 1 run...
-                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.sessrep = 'repl';
+                            matlabbatch{3}.spm.stats.con.consess{j}.tcon.sessrep = sessrep;
                         elseif strcmpi(contrast_array(1,1).kind{j+1},'fcon')
                             matlabbatch{3}.spm.stats.con.consess{j}.fcon.name = contrast_array(1,1).title{j+1};
                             matlabbatch{3}.spm.stats.con.consess{j}.fcon.weights = [str2num(contrast_array(1,1).con{j+1})];
                             % Only if you want to explicitly spell out the contrasts (not use the "repeat for each session" option) should you use this next line
                             %               matlabbatch{3}.spm.stats.con.consess{j}.fcon.weights = [str2num(contrast_array(1,1).con{j+1}), zeros(1,nMtnRegs),str2num(contrast_array(1,1).con{j+1})];
-                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.sessrep = 'repl';
+                            matlabbatch{3}.spm.stats.con.consess{j}.fcon.sessrep = sessrep;
                         else
                             fprintf('Missing contrast type (tcon or fcon) for %s\n', contrast_array(1,1).title{j+1});
                         end
