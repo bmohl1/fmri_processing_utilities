@@ -8,6 +8,7 @@ Currently run in py 3.5.6 b/c of MATLAB compatibility.
 """
 
 import sys
+
 if not 2.8 < sys.version_info[0] < 3.6:
     raise Exception("Must be using Python 3.5")
     
@@ -114,8 +115,27 @@ class model_info:
                 df = pd.DataFrame(pd.read_csv(self.regressor_input_file))
             except Exception as e:
                     print(e)
-                    df = pd.DataFrame(pd.read_excel(self.regressor_input_file))    
-                
+                    
+                    df = pd.DataFrame(pd.read_excel(self.regressor_input_file)) 
+
+            ## IF you want to limit on a particular feature... add here.                    
+            df = df.loc[df['bmi_bodpod'] >= 25,:]
+            subj_col = [col for col in df.columns if 'subj' in col]        
+            import functools
+            num_of_files = functools.reduce(lambda total,l: total + len(l),self.file_lists, 0)
+            if df.shape[0] < num_of_files:
+                for ix in range(len(self.file_lists)):
+                    orig = len(self.file_lists[ix])
+                    tmp = []
+                    for jx in range(len(self.file_lists[ix])):
+                        subj = os.path.basename(self.file_lists[ix][jx]).split('_')[0]
+                        if subj in df[subj_col].values:
+                            tmp.append(self.file_lists[ix][jx])
+                    self.file_lists[ix] = tmp
+                    print('Reduced files from {} to {}'.format(orig, len(self.file_lists[ix])))
+            else:
+                print('Total number of files, {}, matched expected value'.format(num_of_files))
+                    
             if self.regressors_of_interest == 'empty':
                 print(df.columns)
                 self.regressors_of_interest = input('What regressor is being added? ("empty" for no regressor)')
@@ -129,9 +149,9 @@ class model_info:
             tmp_roi_list = self.regressors_of_interest
         
             # Parse to include only the participants with images being used
-            subj_col = [col for col in df.columns if 'subj' in col]
             regressor_cols = [col for col in df.columns if col in tmp_roi_list]
             tmp = pd.DataFrame(columns=regressor_cols)
+
             for subj in self.subjects:
                 # Since the order of a list is persistent, the regressor file can be built in the exact same order as the files are loaded. This is not necessarily alpha-numeric, as SPM accepts the file list as it is given.
                 if df.loc[df[subj_col[0]] == subj,regressor_cols].empty:
@@ -222,7 +242,7 @@ if __name__ == "__main__":
                 except (NameError, TypeError):
                     pass # Expected to be empty sometimes
                 except IndexError:
-                    print('Did not find regressors at {}\n.'.format(loc))
+                    print('Did not find regressors at {}\n'.format(os.path.join(study.first_level_data_dir, study.task_output_dir, study.regressor_input_file)))
                 except Exception as e:
                     print(e)
         

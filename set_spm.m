@@ -14,7 +14,7 @@ end
 
 %% Get presets
 old_path = fileparts(which('spm'));
-home_dir = regexp(userpath, filesep, 'split')
+home_dir = regexp(userpath, filesep, 'split');
 if any(strcmp(home_dir,'home'))
     home_dir = '/usr/local/MATLAB/tools';
 else

@@ -248,7 +248,7 @@ for iTask = 1:nTasks;
                     study_design_file = rdir([subj_pth,filesep, taskPrefix,taskName,'*_param*']);
                 else
                   % Case wher study-wide same design
-                   study_design_file = rdir([proj_dir,filesep ,taskName,'*_param*']);
+                  study_design_file = rdir([proj_dir,filesep,'*',taskName,'*_param*']);
                 end
                 
                 
