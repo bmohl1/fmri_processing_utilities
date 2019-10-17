@@ -15,9 +15,10 @@ spm_get_defaults;
 
 V = spm_vol(fileName);
 
-if (length(V) == 1)
-    return;
-end
+%if (length(V) == 1)
+%    addpath('/home/brianne/tools/general_utilities');
+%    a_4dto3d(fileName);
+%end
 
 % Load data
 data = zeros([V(1).dim(1:3), length(V)]);

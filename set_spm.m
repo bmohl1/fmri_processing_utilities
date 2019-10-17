@@ -35,9 +35,6 @@ if ~strcmp(old_path, new_path)
     rm_spm_path(old_path);
     addpath(new_path);
 end
-    
-%Set the toolboxes to include in the SPM startup
-spmDir = fileparts(which('spm'));
 
 function rm_spm_path(p)
 % remove all directories from the path which start with the old path

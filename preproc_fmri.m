@@ -173,9 +173,8 @@ else
     %% Start setting up the individual's script
     pFiles = size(settings.pth_subjdirs);
     pFiles = pFiles(1);
-    for iSubj = 1:pFiles;
-
-        for iTask = 1:length(settings.taskArray);
+    for iSubj = 1:pFiles        
+        for iTask = 1:length(settings.taskArray)           
             if eq(settings.redo_segment,1) && iTask == 1
                 disp('Redoing the segmentation.');
             end
@@ -251,8 +250,12 @@ else
                         ext = ext{1,1}{end};
                         nVols = length(spm_vol([raw_dir, filesep, imgNames(1).name]));
                     end
+                    
+                    if isempty(dir(strcat(raw_dir,filesep,'touch_acpc.txt')))
+                        acpc_autodetect([raw_dir, filesep, imgNames(1).name]);
+                    end
 
-                    if eq(settings.unwarp,1);
+                    if eq(settings.unwarp,1)
                         inputImg = strcat(char(unwarp_prefix),imgNames(end).name);
                     else
                         inputImg = imgNames(end).name;
@@ -411,5 +414,6 @@ else
             end
         end
     end
-end
+    end
+cd(proj_dir)
 end
