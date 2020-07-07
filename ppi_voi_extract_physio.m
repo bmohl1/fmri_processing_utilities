@@ -1,9 +1,15 @@
-function ppi_voi_extract_physio(subjs,task,voi,reg_var, results_dir)
+function ppi_voi_extract_physio(subjs,task,voi,reg_var, results_dir, voi_dir)
 % Purpose: Subroutine of ppi_proc which performs the physiologic VOI extraction, instead of REX or MARSBAR (purely for simplicity in deconvolving with batch editor.)
 % Author: Brianne Sutton, PhD
 %defaults
 maxima_type = ('supra'); % Change this to supra or local
 get_mtn_reg = 'yes'; %Can change and will enter the 6 regressors for the rp file along with PPI regressors
+
+if strcmp(task,'fp')
+    con_of_interest = 11;
+elseif strcmp(task,'priming')
+    con_of_interest = 1;
+end
 
 tool_dir = fileparts(fileparts(which('ppi_voi_extraction')));
 
@@ -18,8 +24,7 @@ if nargin < 3
     tempfile = textscan(tempfile{1,1}, '%s', 'Delimiter',',');
     voi_file = tempfile{1,1}{1}; %Must have the ",1" removed for accurate handling elsewhere
     voi_dir = fileparts(voi_file);
-    [cwd, voi] = fileparts(voi_file)
-    cd(cwd)
+    [projDir, voi] = fileparts(voi_file);
 else
     sprintf('VOI: %s was passed to ppi_voi_extract_physio\n',voi)
 end
@@ -27,41 +32,38 @@ end
 %% Grab the potential subject locations
 switch exist ('subjs')
     case 1
-        [cwd, pth_subjdirs, subjList] = file_selector(subjs);
+        [cwd, pth_subjDirs, subjList] = file_selector(subjs);
     otherwise
-        [cwd, pth_subjdirs, subjList] = file_selector;
+        [cwd, pth_subjDirs, subjList] = file_selector;
 end
 
 projName = textscan(cwd,'%s','Delimiter','/'); %Does this break in some cases?
 projName = projName{1,1}{end}; %subset of the name (e.g., adhd_2018)
 
-cd(pth_subjdirs{1,1})
+cd(pth_subjDirs{1,1})
 
 %% Find the tasks
 switch exist('task','var')
     case 1
-        [pth_taskdirs, task] = file_selector_task(pth_subjdirs, task);
+        [runs, task] = file_selector_task(pth_subjDirs, task);
     otherwise
-        [pth_taskdirs, task] = file_selector_task(pth_subjdirs);
+        [runs, task] = file_selector_task(pth_subjDirs);
 end
 
 cd (cwd)
-if ~exist('reg_var')
-    reg_var = ('on') %overrides the default
+if ~exist('reg_var','var')
+    reg_var = ('on'); %sets the default
 end
 
 %% Start setting up the individual's script
-for nSubj = 1:length(pth_subjdirs);
-    subj_pth = pth_subjdirs{nSubj};
+for nSubj = 1:length(pth_subjDirs);
+    subj_pth = pth_subjDirs{nSubj};
     if exist('subjList','var') && length(subjList) >= 1;
         %subjList must come with nSubj
-        subjs = char(subjList{nSubj});
+        subj = char(subjList{nSubj});
+    elseif length(subjList) == 1
+        subj = subjs;
     end
-    [projDir, subj, subj_prefix] = find_subj_pths (subj_pth,subjs); %common script
-
-    %% Hard coded just to speed up for K and J
-    results_dir = [subj_pth,filesep,'model_eats_ar_mvmnt_s6_ppiEx'];
-    subj_prefix=subj_prefix(1:end-3)
     %%
     masks = {'wm' 'csf' voi};
 
@@ -84,7 +86,13 @@ for nSubj = 1:length(pth_subjdirs);
         for j = (1:length(masks))
             mask = masks{j};
             %% Get Number of runs
-            runs = file_selector_task({subj_pth}, task);
+            possible_runs = file_selector_task({subj_pth}, task);
+            clear runs;
+            for r = 1:length(possible_runs)
+                runs{r} = char(possible_runs(r).fileDirs);
+            end
+            [~,idx]=unique(cell2mat(runs),'rows');
+            runs = runs(idx);
             check_voi = strcat(results_dir,filesep,'VOI_',mask,'_',num2str(length(runs)),'.mat');
             if ~exist(check_voi,'file')
                 sprintf('Extracting values for %s', mask)
@@ -94,11 +102,11 @@ for nSubj = 1:length(pth_subjdirs);
                 elseif strcmp(mask, 'wm')
                     mask_file = glob([subj_t1_dir,filesep,'mwc2',subj_t1_file]); %wm
                 else
-                    mask_file = glob([projDir,filesep, mask,'*nii']);
+                    mask_file = glob([voi_dir,filesep, mask,'*nii']);
                 end
 
                 %% Escape to segment, if mask is missing
-                if isempty(mask_file) & ((strfind ('csf', mask) | strfind('wm', mask)))
+                if isempty(mask_file) && ((strfind ('csf', mask) || strfind('wm', mask)))
                     %% CHANGE BACK TO SEGMENTATION_SPM12
                     segmentation_spm12_eats(subj,0,0); %for single subject, don't redo segmentation, and don't use weird template
                 else
@@ -131,7 +139,7 @@ for nSubj = 1:length(pth_subjdirs);
                     matlabbatch{1}.spm.util.voi.roi{1}.mask.image = {[results_dir,filesep,reg_out,'.nii,1']};
                     matlabbatch{1}.spm.util.voi.roi{1}.mask.threshold = 0.99; % include all the voxels in the mask
                     matlabbatch{1}.spm.util.voi.roi{2}.spm.spmmat = {''};
-                    matlabbatch{1}.spm.util.voi.roi{2}.spm.contrast = 3; % CHANGE per analysis - what condition are you interested in modeling with the interaction
+                    matlabbatch{1}.spm.util.voi.roi{2}.spm.contrast = con_of_interest; % CHANGE per analysis - what condition are you interested in modeling with the interaction
                     matlabbatch{1}.spm.util.voi.roi{2}.spm.conjunction = 1;
                     matlabbatch{1}.spm.util.voi.roi{2}.spm.threshdesc = 'none';
                     matlabbatch{1}.spm.util.voi.roi{2}.spm.thresh = 0.99; % the point is to get a timecourse, but not have all noise present
