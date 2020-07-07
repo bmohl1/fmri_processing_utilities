@@ -35,7 +35,7 @@ if length(glob(strcat(output_dir,filesep,'*'))) < 4 %i.e., would only have 1 fil
       matlabbatch{3}.spm.stats.con.consess{2}.tcon.weights = [-1];
 
 
-    elseif strcmp(comparison_type,'two_sample')
+    elseif contains(comparison_type,'two_sample')
 
       matlabbatch{1}.spm.stats.factorial_design.des.t2.scans1 = file_lists{1}(:);
       matlabbatch{1}.spm.stats.factorial_design.des.t2.scans2 = file_lists{2}(:);
@@ -47,9 +47,15 @@ if length(glob(strcat(output_dir,filesep,'*'))) < 4 %i.e., would only have 1 fil
       matlabbatch{3}.spm.stats.con.consess{2}.tcon.weights = [-1 1];
       matlabbatch{3}.spm.stats.con.consess{3}.tcon.name = ['Average effect of condition'];
       matlabbatch{3}.spm.stats.con.consess{3}.tcon.weights = [0.5 0.5];
+      matlabbatch{3}.spm.stats.con.consess{4}.fcon.name = ['Group differences'];
+      matlabbatch{3}.spm.stats.con.consess{4}.fcon.weights = [1 -1];
+      
+          if contains(comparison_type,'dependent')
+            matlabbatch{1}.spm.stats.factorial_design.des.t2.dept=1;
+          end
 
       %% Full factorial
-    elseif strcmp(comparison_type,'full_factorial')
+    elseif contains(comparison_type,'full_factorial')
 
 
       %Design conditions

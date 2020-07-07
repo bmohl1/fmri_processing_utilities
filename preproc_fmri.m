@@ -35,7 +35,7 @@ function [subj,taskArray] = preproc_fmri(subjs, taskArray, settings_dict)
 %   deformation applied to other resliced images.
 %   5) Deformations - from the New Segmentation step (this is also
 %   normalization)
-%   6) Smoothing - 6 FWHM kernel
+%   6) Smoothing - 8 FWHM kernel
 
 
 %For FUTURE: make a log of "exceptions" that will pop up for users after a batch is completed.
@@ -45,6 +45,7 @@ tool_dir = fileparts(fileparts(which('preproc_fmri')));
 addpath([tool_dir filesep 'general_utilities']);
 img_home = '/data/images';
 [spm_home, template_home] = update_script_paths(tool_dir, '12');
+motionCheck =1;
 
 persistent settings;
 
@@ -56,7 +57,7 @@ settings = struct('art', 0, 'cancel', 0, 'dummies', 0, 'ignore_preproc', 0, ...
 %% specify subject directory
 switch exist('subjs','var')
     case 1
-        if ~contains(pwd,subjs)
+        if ~contains(string(pwd),subjs)
             cd (img_home);
         end
         try
@@ -121,7 +122,7 @@ if exist('settings_dict','var')
         settings = setfield(settings,k{x},v{x});
     end
     fprintf('Updated settings.')
-    if contains(pwd, subjs)
+    if contains(string(pwd), subjs)
         % Double checks where you are, since pwd is called later
         cd ..
     end
@@ -131,7 +132,7 @@ end
 if ~exist('settings_dict','var')
     [settings.special_templates settings.art settings.stc ...
         settings.dummies settings.unwarp settings.ignore_preproc ...
-        settings.redo_segment settings.cancel settings.aCompCorr] = preproc_fmri_inputVars_GUI; %allows for non-scripting users to alter the settings easily
+        settings.redo_segment settings.cancel settings.aCompCorr settings.alt_pipeline] = preproc_fmri_inputVars_GUI; %allows for non-scripting users to alter the settings easily
     close(gcf);
     if eq(settings.unwarp,1)
         % Unwarping used for geometric distortion correction
@@ -212,7 +213,7 @@ else
                     end
 
 
-                    [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', subj);%checks if there is a more recent T1
+                    [settings.subj_t1_dir, settings.subj_t1_file, settings.t1_ext] = locate_scan_file ('t1', subj); %checks if there is a more recent T1
                     if isempty(settings.subj_t1_file)  && ~isempty(strfind(subj, subj_prefix)); %checks to make sure that the same subject is still being processed
                         try
                             fprintf('Warning: T1 not associated with this task.\nTrying to find proximal T1 in %s \n', alt_subjId);
@@ -250,11 +251,13 @@ else
                         ext = ext{1,1}{end};
                         nVols = length(spm_vol([raw_dir, filesep, imgNames(1).name]));
                     end
-                    
+ 
+                    %% ACPC autodetection
                     if isempty(dir(strcat(raw_dir,filesep,'touch_acpc.txt')))
                         acpc_autodetect([raw_dir, filesep, imgNames(1).name]);
                     end
 
+                    %% Unwarping
                     if eq(settings.unwarp,1)
                         inputImg = strcat(char(unwarp_prefix),imgNames(end).name);
                     else
@@ -279,18 +282,22 @@ else
                             fmri_unwarp(orig_files, subj, settings)
                         end
                     end
-
+                    
+                    %% STC
                     if eq(settings.stc,1);
                         check_if_processed = rdir(strcat(raw_dir,filesep,'swa',inputImg));
+                    elseif eq(settings.alt_pipeline,1);
+                        check_if_processed = rdir(strcat(raw_dir,filesep,'sv',inputImg));           
                     else
                         check_if_processed = rdir(strcat(raw_dir,filesep,'sw',inputImg));
                     end
-
+                    
+                    %% Main options - only carried out, if the files have not been processed
                     if isempty(check_if_processed) || eq(settings.ignore_preproc,1); %meaning if the files have not been smoothed, the rest of the process should also be validated/run
-                        %% find t1
+                        % find t1
                         cd (proj_dir)
-
-                        %% STC
+                        
+                        % STC
                         if eq(settings.stc,1); %only runs if you selected STC
 
                             orig_files = cell(1,nVols);
@@ -352,15 +359,26 @@ else
                         %% Realignment through smoothing
                         fprintf('Subject: %s\n',subj);
                         fprintf('T1: %s\n', settings.subj_t1_file)
-                        if length(proc_files) > 0
+                        if length(proc_files) > 0 && settings.alt_pipeline == 0
                             % Only processes participants with identified
                             % volumes.
-                            fmri_realign2smooth (proc_files, subj, settings);
+                            fmri_realign2smooth (proc_files,subj, settings);
+                        elseif length(proc_files) > 0
+                            fmri_irepi_pipeline(proc_files,subj, settings);
                         end
 
                         settingsFile = strcat(raw_dir,filesep,'fmri_analysis_settings.mat');
                         save(settingsFile,'settings');
-
+%                     elseif eq(motionCheck,1)
+%                         find_files = rdir(char(strcat(raw_dir,filesep,inputImg))); %go find everything %unwarping
+%                         tmp = cellfun(@(x) strfind(x,'.mat'), {find_files.name}, 'UniformOutput',false);
+%                         find_files = find_files(find(cellfun('isempty',tmp)));
+%                         val=cellfun(@(x) numel(x),{find_files.name}); %compare the length of all the nii's
+%                         files_to_process =  find_files(val==min(val)); %take the shortest ones, since SPM appends
+%                         for iPF = 1: length(files_to_process)
+%                             proc_files{1,iPF} = fullfile(files_to_process(iPF).name);
+%                         end
+%                         calculateQCmeasures(proc_files{:}, settings.subj_t1_file, 8, spm_home, raw_dir, subj)
                     else
                         fprintf('Located  %d processed image(s) \n', length( check_if_processed));
                     end
@@ -374,7 +392,7 @@ else
                     end
                 end
 
-                if (eq(settings.aCompCorr,1) && isempty(rdir(strcat(raw_dir,filesep,'aCompCorr_WM_regs.txt')))...
+                if (eq(settings.aCompCorr,1) && isempty(rdir(strcat(raw_dir,filesep,'aCompCorr_regs.txt')))...
                     || eq(settings.aCompCorr,1) && eq(settings.ignore_preproc,1));
 
                     %% Find files for realignment through smoothing
@@ -408,8 +426,8 @@ else
                     wm = rdir(fullfile(settings.subj_t1_dir,strcat('mwc2',settings.subj_t1_file)));
                     csf = rdir(fullfile(settings.subj_t1_dir,strcat('mwc3',settings.subj_t1_file)));
                     vois = create_threshold_mask({gm.name, wm.name,csf.name}); %Can enter alternate threshold if desired
-                    acompcorr = extract_voi_ts_compCorr(proc_files,{wm.name}); %,csf.name});
-                   save(fullfile(raw_dir, 'aCompCorr_WM_regs.txt'),'acompcorr','-ascii')
+                    acompcorr = extract_voi_ts_compCorr(proc_files,{wm.name,csf.name});
+                   save(fullfile(raw_dir, 'aCompCorr_regs.txt'),'acompcorr','-ascii')
                    cd(proj_dir)
             end
         end

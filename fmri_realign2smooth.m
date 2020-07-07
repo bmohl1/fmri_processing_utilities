@@ -7,6 +7,8 @@ function [subj] = fmri_realign2smooth (all_proc_files,subj,settings)
 display('> Subroutine: Running fmri_realign2smooth');
 [spm_home, template_home] = update_script_paths;
 
+coreg_ref = 't1'; %t1 or epi
+
 raw_dir  = pwd; %the functions calling this one should have cd'd into raw_dir
 parts    = textscan(raw_dir,'%s','Delimiter','/');
 subjIx   = strfind(parts{:},subj);
@@ -76,7 +78,7 @@ if eq(settings.special_templates,1)
     global template_file;
     tpm = char(template_file); %expecting a 4D file
     spline = 4;
-    %tempSize = 'subj';
+    %templateSize = 'subj';
     templateSize = 'mni';
 else
     tpm = fullfile(template_home,'TPM.nii');
@@ -121,14 +123,14 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.quality = 0.9;
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.sep = 4;
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.fwhm = 5;
-    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.rtm = 1;
+    matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.rtm = 0;
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.interp = spline; %Spline for rp
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.wrap = [0 0 0];
     matlabbatch{1}.spm.spatial.realign.estwrite.eoptions.weight = '';
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.which = [0 1];
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.interp = 4;
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.wrap = [0 0 0];
-    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.mask = 1;
+    matlabbatch{1}.spm.spatial.realign.estwrite.roptions.mask = 0;
     matlabbatch{1}.spm.spatial.realign.estwrite.roptions.prefix = 'r';
 
     save(savefile, 'matlabbatch');
@@ -137,10 +139,11 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
     y_file = cellstr(fullfile(settings.subj_t1_dir,y_img.name));
 
     if isempty(brain_img)
-        fprintf('Did not find unzipped brain for %s. Does it exist?\n',subj)
+        fprintf('Did not find unzipped brain for %s. Does it exist?\nHas segmentation finished running to yield a skullstripped image?\n',subj)
         return
     else
-        brain_file = fullfile(brain_img.name);
+        brain_file = {fullfile(brain_img.name)};
+        t1_file = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file)};
     end
 
     if ~isempty(settings.subj_t1_file)
@@ -155,23 +158,28 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
 
         if ~strcmp(settings.ver, '8')
             %SPM12 version
-            matlabbatch{2}.spm.spatial.coreg.estimate.ref = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file, ',1')};
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1) = cfg_dep('Realign: Estimate & Reslice: Mean Image',...
-                substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}),...
-                substruct('.','rmean'));
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep('Realign: Estimate & Reslice: Realigned Images (Sess 1)',...
-                substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}),...
-                substruct('.','sess', '()',{1}, '.','cfiles'));
+            if strcmp(coreg_ref, 't1')
+                matlabbatch{2}.spm.spatial.coreg.estimate.ref = t1_file;
+                %matlabbatch{2}.spm.spatial.coreg.estimate.ref = brain_file;
+                matlabbatch{2}.spm.spatial.coreg.estimate.source(1) = cfg_dep('Realign: Estimate & Reslice: Mean Image', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','rmean'));
+                matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep('Realign: Estimate & Reslice: Realigned Images (Sess 1)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','sess', '()',{1}, '.','cfiles'));
+            else
+                matlabbatch{2}.spm.spatial.coreg.estimate.ref(1) = cfg_dep('Realign: Estimate & Reslice: Mean Image', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','rmean'));
+                matlabbatch{2}.spm.spatial.coreg.estimate.source = t1_file;
+                %matlabbatch{2}.spm.spatial.coreg.estimate.source = brain_file;
+                matlabbatch{2}.spm.spatial.coreg.estimate.other = {''};
+            end
+
 %             matlabbatch{2}.spm.spatial.coreg.estimate.roptions.interp = 4;
 %             matlabbatch{2}.spm.spatial.coreg.estimate.roptions.wrap = [0 0 0];
 %             matlabbatch{2}.spm.spatial.coreg.estimate.roptions.mask = 0;
 %             matlabbatch{2}.spm.spatial.coreg.estimate.roptions.prefix = 'r';
             save(savefile, 'matlabbatch');
 
-
-            matlabbatch{3}.spm.spatial.normalise.estwrite.subj.vol = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file, ',1')}; % Tried with the skull-stirpped version and the resulting EPI is larger than the template/subject's T1
-            matlabbatch{3}.spm.spatial.normalise.estwrite.subj.resample(1) = cfg_dep('Coregister: Estimate: Coregistered Images', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','cfiles'));
-            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.0001;
+            matlabbatch{3}.spm.spatial.normalise.estwrite.subj.vol = t1_file; % should be the same as the Coregistered Img, if the T1 was registered to the EPI
+            %matlabbatch{3}.spm.spatial.normalise.estwrite.subj.vol(1) = cfg_dep('Coregister: Estimate: Coregistered Images', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','cfiles'));
+            matlabbatch{3}.spm.spatial.normalise.estwrite.subj.resample(1) = cfg_dep('Realign: Estimate & Reslice: Realigned Images (Sess 1)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','sess', '()',{1}, '.','cfiles'));
+            matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasreg = 0.1;
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.biasfwhm = 60;
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.tpm = {tpm};
             matlabbatch{3}.spm.spatial.normalise.estwrite.eoptions.affreg = templateSize; %'mni' or 'subj'
@@ -182,7 +190,8 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             %   78 76 85];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
             matlabbatch{3}.spm.spatial.normalise.estwrite.woptions.interp = 4;
-
+            
+            matlabbatch{4}.spm.spatial.smooth.fwhm = [8 8 8];
             matlabbatch{4}.spm.spatial.smooth.data(1) = cfg_dep('Normalise: Estimate & Write: Normalised Images (Subj 1)',...
                 substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','files'));
             save(savefile, 'matlabbatch');
@@ -191,23 +200,8 @@ if length(coreg_check) < 1 || eq(settings.ignore_preproc,1);
             %% SPM8 version - coreg
             matlabbatch{2}.spm.spatial.coreg.estimate.ref = {strcat(settings.subj_t1_dir, filesep, settings.subj_t1_file)};
             matlabbatch{2}.spm.spatial.coreg.estimate.source(1) = cfg_dep;
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tname = 'Source Image';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).name = 'filter';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(1).value = 'image';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).name = 'strtype';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).tgt_spec{1}(2).value = 'e';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).sname = 'Realign: Estimate & Reslice: Mean Image';
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            matlabbatch{2}.spm.spatial.coreg.estimate.source(1).src_output = substruct('.','rmean');
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1) = cfg_dep;
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tname = 'Other Images';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).name = 'filter';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(1).value = 'image';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).name = 'strtype';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).tgt_spec{1}(2).value = 'e';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).sname = 'Realign: Estimate & Reslice: Realigned Images (Sess 1)';
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_exbranch = substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1});
-            matlabbatch{2}.spm.spatial.coreg.estimate.other(1).src_output = substruct('.','sess', '()',{1}, '.','cfiles');
+            matlabbatch{2}.spm.spatial.coreg.estimate.other = {''};
+
             save(savefile, 'matlabbatch');
             %% 8 Deformations
             %variable for this section are defined while in the t1 directory for
@@ -262,6 +256,7 @@ else
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.vox = [3 3 3];
     matlabbatch{1}.spm.spatial.normalise.estwrite.woptions.interp = 4;
 
+    matlabbatch{2}.spm.spatial.smooth.fwhm = [8 8 8];
     matlabbatch{2}.spm.spatial.smooth.data(1) = cfg_dep('Normalise: Estimate & Write: Normalised Images (Subj 1)',...
         substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','files'));
     save(savefile, 'matlabbatch');
@@ -271,3 +266,4 @@ end
 spm_jobman('run',matlabbatch)
 
 end
+

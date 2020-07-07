@@ -9,7 +9,7 @@ function [pca_regressors] = extract_voi_ts_compCorr(fmri_files,roi_files)
 
 if isempty(which('pca'))
     print('Stats folder was not on path. May have issues that require restoring default path.');
-    addpath(genpath('/usr/local/MATLAB/R2017a/toolbox/stats'));
+    addpath(genpath([matlabroot,filesep,'toolbox/stats']));
 end
 
 fmri_files = char(fmri_files);

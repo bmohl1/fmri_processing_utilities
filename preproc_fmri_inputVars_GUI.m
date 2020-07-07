@@ -22,7 +22,7 @@ function varargout = preproc_fmri_inputVars_GUI(varargin)
 
 % Edit the above text to modify the response to help preproc_fmri_inputVars_GUI
 
-% Last Modified by GUIDE v2.5 23-Jul-2019 10:44:23
+% Last Modified by GUIDE v2.5 31-Oct-2019 13:07:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -79,6 +79,7 @@ preprocflag = get(handles.checkbox_ignore,'Value');
 segmentationflag = get(handles.checkbox_segmentation,'Value');
 cancelflag = get(handles.pushbutton_cancel, 'userdata');
 aCompCorrflag = get(handles.checkbox_aCompCorr_opt,'Value');
+pipelineflag = get(handles.checkbox_alt_pipeline,'Value');
 
 %special_templates runArt stc discard_dummies prefix ignore_preproc
 varargout{1} = specialTempflag;
@@ -90,6 +91,7 @@ varargout{6} = preprocflag;
 varargout{7} = segmentationflag;
 varargout{8} = cancelflag;
 varargout{9} = aCompCorrflag;
+varargout{10} = pipelineflag;
 
 delete(handles.figure1);
 
@@ -211,4 +213,16 @@ function checkbox_aCompCorr_opt_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox_aCompCorr_opt
 handles.aCompCorr_opt = get(hObject,'Value');
+guidata(hObject, handles);
+
+
+
+% --- Executes on button press in checkbox_alt_pipeline.
+function checkbox_alt_pipeline_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_alt_pipeline (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_alt_pipeline
+handles.alt_pipeline = get(hObject,'Value');
 guidata(hObject, handles);

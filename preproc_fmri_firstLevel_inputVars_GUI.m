@@ -22,7 +22,7 @@ function varargout = preproc_fmri_firstLevel_inputVars_GUI(varargin)
 
 % Edit the above text to modify the response to help preproc_fmri_firstLevel_inputVars_GUI
 
-% Last Modified by GUIDE v2.5 23-Jul-2019 15:29:11
+% Last Modified by GUIDE v2.5 16-Dec-2019 08:31:15
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -78,6 +78,8 @@ unwarpflag = get(handles.checkbox_unwarp,'Value');
 preprocflag = get(handles.checkbox_ignore,'Value');
 dirNameflag = get(handles.edit_dirName,'String');
 aCompCorrflag = get(handles.checkbox_aCompCorr_opt,'Value');
+irepiflag = get(handles.checkbox_irepi,'Value');
+
 %special_templates runArt stc discard_dummies prefix ignore_preproc
 varargout{1} = specialTempflag;
 varargout{2} = artflag;
@@ -87,6 +89,7 @@ varargout{5} = unwarpflag;
 varargout{6} = preprocflag;
 varargout{7} = dirNameflag;
 varargout{8} = aCompCorrflag;
+varargout{9} = irepiflag;
 delete(handles.figure1);
 
 
@@ -198,4 +201,15 @@ function checkbox_aCompCorr_opt_Callback(hObject, eventdata, handles)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox_aCompCorr_opt
 handles.aCompCorr_opt = get(hObject,'Value');
+guidata(hObject,handles);
+
+
+% --- Executes on button press in checkbox_irepi.
+function checkbox_irepi_Callback(hObject, eventdata, handles)
+% hObject    handle to checkbox_irepi (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of checkbox_irepi
+handles.irepi = get(hObject,'Value');
 guidata(hObject,handles);
