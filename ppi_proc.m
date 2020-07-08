@@ -62,15 +62,11 @@ for v = 1:length(vois)
 
     %% Start setting up the individual's script
     for iTask = 1:length(taskArray)
-        for nSubj = 1:length(pth_subjDirs);
-            subj_pth = pth_subjDirs{nSubj};
-            %subj_taskpth = pth_taskDirs(iTask).fileDirs{nSubj};
-            check = textscan(subj_pth,'%s','Delimiter','/'); 
-            if exist('subjList','var') && length(subjList) >= 1;
-                subjs = char(subjList{nSubj});
-            elseif length(subjList) == 1
-                subjs = subjList;
-            end
+        for nSubj = 1:length(pth_taskDirs(iTask).fileDirs)
+            %subj_pth = pth_subjDirs{nSubj};
+            results_dir = pth_taskDirs(iTask).fileDirs{nSubj};
+            subj_pth = fileparts(results_dir);
+            check = textscan(subj_pth,'%s','Delimiter','/');
 
             ix = strfind(check{1,1},projName); %locate where the subj is in the string
             ix = ~cellfun('isempty',ix);
@@ -86,8 +82,6 @@ for v = 1:length(vois)
                 results_dir = [subj_pth,filesep,'model_eats_ar_mvmnt_s6_ppiEx'];
                 subj_prefix=subj_prefix(1:end-3);
                 %results_dir = [subj_pth,filesep,'results_art'];
-            else
-                results_dir = [subj_pth,filesep,taskArray{iTask}];  % When the option was to make an ART directory, there was an if/then to switch the results_art dir
             end
 
             check_spm  = char(glob(strcat(results_dir,filesep,'SPM.mat')));
@@ -102,12 +96,12 @@ for v = 1:length(vois)
                 runs = file_selector_task({subj_pth}, {task});
                 for r = 1:length(runs)
                     run = num2str(r);
-                    check_extracted = glob(strcat(results_dir,filesep,'VOI_',voi,'_',run,'.mat'));
+                    check_extracted = glob(strcat(results_dir,filesep,'VOI_',voi,'_',task,run,'.mat'));
                     if isempty(check_extracted)
                         try
                             cd(projDir)
                             ppi_voi_extract_physio(subj,task,voi,reg_var,results_dir, voi_dir);
-                            check_extracted = glob(strcat(results_dir,filesep,'VOI_',voi,'_',run,'.mat'));
+                            check_extracted = glob(strcat(results_dir,filesep,'VOI_',voi,'_',task,run,'.mat'));
                         catch
                             sprintf('Timecourse extractions were unsuccessful for %s\n',subj)
                             continue
@@ -116,7 +110,7 @@ for v = 1:length(vois)
 
                     %% Skip reconvolution, if already complete
                     voi_output = strcat(voi,'_',run);
-                    check_reconvolved  = char(glob(strcat(results_dir,filesep,'PPI_',voi_output,'.mat')));
+                    check_reconvolved  = char(glob(strcat(results_dir,filesep,'PPI_',voi_output, '_', task, '.mat')));
 
                     %% Reconvolution
                     if ~isempty(check_reconvolved)
@@ -159,9 +153,9 @@ for v = 1:length(vois)
                     %% First-level PPI processing
                     ppi_name      = strcat('ppi_',voi);
                     if strcmp (reg_var, 'off')
-                        ppi_name      = strcat('ppi_',voi);
+                        ppi_name      = strcat('ppi_',task, '_', voi);
                     else
-                        ppi_name      = strcat('ppi_',voi,'_rp');
+                        ppi_name      = strcat('ppi_',task, '_', voi,'_rp');
                     end
 
                     %% Setup and check whether the PPI has been run
@@ -170,7 +164,7 @@ for v = 1:length(vois)
                         mkdir (ppi_con_dir);
                     end
                     check_ppi_con = char(glob(strcat(ppi_con_dir,filesep,'con_0001.img'))); %the con image ensures that the SPM was estimated.
-                    check_reconvolved = char(glob(strcat(results_dir,filesep,'PPI_',voi_output,'.mat')));
+                    check_reconvolved = char(glob(strcat(results_dir,filesep,'PPI_',voi_output, '_', task,'.mat')));
 
                     if isempty(check_ppi_con) && ~isempty(check_reconvolved)
                         disp('Loading PPI estimation variables')
@@ -189,10 +183,26 @@ for v = 1:length(vois)
                             reconv  = check_reconvolved;
                             csf_file = char(glob(strcat(results_dir,filesep,'VOI_csf_',run,'.mat')));
                             wm_file = char(glob(strcat(results_dir,filesep,'VOI_wm_',run,'.mat')));
+                            
+                            switch task
+                                case 'fp_results'
+                                    raw_dir = 'fp_postInt_run1';
+                                case 'fp_results_post'
+                                    raw_dir = 'fp_preInt_run1';
+                                case 'priming_results'
+                                    raw_dir = 'priming';
+                                otherwise
+                                    % Attempt to catch other paradigms that
+                                    % may have only one run or are
+                                    % "normally" specified.
+                                    raw_dir = textscan(task,'%s','Delimiter','_');
+                                    raw_dir = strcat(raw_dir{1,1},'_results');
+                            end
+                            
                             try
-                                rp_file = char(glob(strcat(subj_pth,filesep,runs(1,r).task,filesep,'rp*txt')));
+                                rp_file = char(glob(strcat(subj_pth,filesep,raw_dir,filesep,'rp*txt')));
                             catch
-                                print('Are the rp files copied into the results directories?')
+                                sprintf('rp files not in %s\n',strcat(subj_pth,filesep,raw_dir,filesep,'rp*txt'));
                             end
                                                         
                             load(reconv);
@@ -212,7 +222,7 @@ for v = 1:length(vois)
                             %else
                             %find_rp_file = char(glob(strcat(subj_pth,filesep,task_dir,filesep,'raw',filesep,'rp_*')));
 
-                            [scan_files] = gather_sw_files(subj_pth,{runs(1,r).task});
+                            [scan_files] = gather_sw_files(subj_pth,{raw_dir});
                             matlabbatch{1}.spm.stats.fmri_spec.dir = {ppi_con_dir};
                             matlabbatch{1}.spm.stats.fmri_spec.timing.units = 'secs';
                             matlabbatch{1}.spm.stats.fmri_spec.timing.RT = 2;
