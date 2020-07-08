@@ -5,9 +5,9 @@ function ppi_voi_extract_physio(subjs,task,voi,reg_var, results_dir, voi_dir)
 maxima_type = ('supra'); % Change this to supra or local
 get_mtn_reg = 'yes'; %Can change and will enter the 6 regressors for the rp file along with PPI regressors
 
-if strcmp(task,'fp')
+if contains(task,'fp')
     con_of_interest = 11;
-elseif strcmp(task,'priming')
+elseif contains(task,'priming')
     con_of_interest = 1;
 end
 
@@ -91,9 +91,10 @@ for nSubj = 1:length(pth_subjDirs);
             for r = 1:length(possible_runs)
                 runs{r} = char(possible_runs(r).fileDirs);
             end
+            % Eliminate duplicates
             [~,idx]=unique(cell2mat(runs),'rows');
             runs = runs(idx);
-            check_voi = strcat(results_dir,filesep,'VOI_',mask,'_',num2str(length(runs)),'.mat');
+            check_voi = strcat(results_dir,filesep,'VOI_',mask,'_',task,num2str(length(runs)),'.mat');
             if ~exist(check_voi,'file')
                 sprintf('Extracting values for %s', mask)
                 reg_out = strcat(mask, '_thresh');
@@ -152,6 +153,7 @@ for nSubj = 1:length(pth_subjDirs);
                     savefile = [subj_pth,filesep,mask,'_voi_extract_',subj,'.mat'];
                     save(savefile,'matlabbatch');
                     spm_jobman('run',matlabbatch)
+                    movefile(strcat(results_dir,filesep,'VOI_',mask,'_',num2str(length(runs)),'.mat'), check_voi);
                 end
             end
             temp = load(check_voi);

@@ -118,7 +118,14 @@ for v = 1:length(vois)
                     elseif ~isempty(check_spm)
                         disp('Reconvolving the extracted signal')
                         % In the FUTURE, read in the regressors from a text file to make more flexible across studies.
-                        task_regressors = [1 1 1; 2 1 0; 3 1 0; 4 1 0]; %Definitions for the PPI. (1) Condition, (2) Include condition?, (3) How to weight the condition
+                        switch task
+                            case 'fp_results'
+                                task_regressors = [1 1 1; 2 1 0; 3 1 0; 4 1 0]; 
+                            case 'fp_results_post'
+                                task_regressors = [1 1 1; 2 1 0; 3 1 0; 4 1 0]; %Definitions for the PPI. (1) Condition, (2) Include condition?, (3) How to weight the condition
+                            case 'priming_results'
+                                task_regressors = [1 1 1; 2 1 0;];
+                        end
                         % For EATS data, ignore "objects", subtract effect of basics, add effect of hedonics, and ingore baseline
                         if ~isempty(check_extracted)
                             clear matlabbatch
